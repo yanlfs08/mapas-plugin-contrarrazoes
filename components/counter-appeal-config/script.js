@@ -2,8 +2,9 @@ app.component('counter-appeal-config', {
     template: $TEMPLATES['counter-appeal-config'],
 
     props: {
-        entity: {
-            type: Entity,
+        // fase de recurso cuja etapa recebe o acordeão "Contrarrazões"
+        appealPhaseId: {
+            type: [Number, String],
             required: true,
         },
     },
@@ -16,8 +17,16 @@ app.component('counter-appeal-config', {
 
     data() {
         const config = $MAPAS.config.counterAppealConfig || [];
-        const items = config.map((item) => this.buildItem(item));
-        return { items };
+        const found = config.find((item) => String(item.appealPhase.id) === String(this.appealPhaseId));
+
+        // fase de recurso criada depois do carregamento da página: ainda sem dados do servidor
+        const item = this.buildItem(found || {
+            appealPhase: { id: this.appealPhaseId },
+            publicFieldOptions: [],
+            counter: null,
+            counterAppeals: [],
+        });
+        return { item };
     },
 
     methods: {
@@ -29,7 +38,6 @@ app.component('counter-appeal-config', {
                 saving: false,
                 counterEntity: counter ? this.toEntity(counter) : null,
                 form: {
-                    counterAppealEligibility: counter?.counterAppealEligibility || 'all',
                     counterAppealPublicFields: [...(counter?.counterAppealPublicFields || [])],
                 },
             };
@@ -50,7 +58,6 @@ app.component('counter-appeal-config', {
             try {
                 const data = await this.appealPhaseEntity(item).invoke('createCounterAppealPhase', {});
                 item.counterEntity = this.toEntity(data);
-                item.form.counterAppealEligibility = data.counterAppealEligibility || 'all';
                 item.form.counterAppealPublicFields = [...(data.counterAppealPublicFields || [])];
                 this.messages.success(this.text('Fase de contrarrazões criada com sucesso'));
             } catch (error) {
@@ -63,7 +70,6 @@ app.component('counter-appeal-config', {
             item.saving = true;
             const counter = item.counterEntity;
             const payload = {
-                counterAppealEligibility: item.form.counterAppealEligibility,
                 counterAppealPublicFields: item.form.counterAppealPublicFields.length ? item.form.counterAppealPublicFields : '',
                 registrationFrom: counter.registrationFrom ? counter.registrationFrom.sql() : '',
                 registrationTo: counter.registrationTo ? counter.registrationTo.sql() : '',

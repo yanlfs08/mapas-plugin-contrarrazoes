@@ -1,6 +1,19 @@
 app.component('counter-appeal-list', {
     template: $TEMPLATES['counter-appeal-list'],
 
+    props: {
+        // mostra só a fase de contrarrazões informada (usado no modal da linha do tempo)
+        counterId: {
+            type: [Number, String],
+            default: null,
+        },
+        // esconde título e prazo, já exibidos no bloco da linha do tempo
+        hideHeader: {
+            type: Boolean,
+            default: false,
+        },
+    },
+
     setup() {
         const text = Utils.getTexts('counter-appeal-list');
         const messages = useMessages();
@@ -12,11 +25,21 @@ app.component('counter-appeal-list', {
         return {
             isGuest: !!config.isGuest,
             loginUrl: config.loginUrl,
-            phases: config.phases || [],
+            registrationNumber: config.registrationNumber || null,
+            allPhases: config.phases || [],
             filters: {},
             selectedAuthor: {},
             processing: null,
         };
+    },
+
+    computed: {
+        phases() {
+            if (!this.counterId) {
+                return this.allPhases;
+            }
+            return this.allPhases.filter((phase) => String(phase.counterId) === String(this.counterId));
+        },
     },
 
     methods: {

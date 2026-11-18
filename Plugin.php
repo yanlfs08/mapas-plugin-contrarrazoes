@@ -27,7 +27,7 @@ use MapasCulturais\i;
  */
 class Plugin extends \MapasCulturais\Plugin
 {
-    const VERSION = '1.0.0';
+    const VERSION = '1.1.0';
 
     /** Faixa de versões do Mapas Culturais em que o plugin foi testado */
     const TESTED_MAPAS_VERSIONS = '7.8';
@@ -81,7 +81,8 @@ class Plugin extends \MapasCulturais\Plugin
         $this->initJudgementLockHooks();
         $this->initTemplateHooks();
 
-        // a fase de contrarrazões não tem página própria: leva para a aba do edital
+        // a fase de contrarrazões não tem página própria: leva o gestor para a Configuração de fases
+        // da oportunidade e o candidato para a linha do tempo da sua inscrição, com a lista aberta
         $app->hook('GET(opportunity.<<single|edit>>):before', function () use ($self, $app) {
             /** @var \MapasCulturais\Controllers\Opportunity $this */
             $counter = $this->requestedEntity;
@@ -94,8 +95,15 @@ class Plugin extends \MapasCulturais\Plugin
                 return;
             }
 
-            $action = $this->action === 'edit' && $counter->canUser('@control') ? 'edit' : 'single';
-            $app->redirect($app->createUrl('opportunity', $action, [$edital->id]) . '#contrarrazoes');
+            if ($counter->canUser('@control')) {
+                $app->redirect($app->createUrl('opportunity', 'edit', [$edital->id]) . '#config');
+            }
+
+            if ($candidates = $self->getUserCandidateRegistrations($counter)) {
+                $app->redirect($self->getCounterAppealListUrl($candidates[0], $counter));
+            }
+
+            $app->redirect($edital->singleUrl);
         });
 
         // ao excluir a fase de recurso, exclui também a fase de contrarrazões.
@@ -145,10 +153,12 @@ class Plugin extends \MapasCulturais\Plugin
             'type' => 'integer',
         ]);
 
+        // OBSOLETO desde a 1.1.0: só inscritos na mesma etapa do recurso apresentam contrarrazões.
+        // Continua registrado para não quebrar fases antigas que gravaram o valor, mas é ignorado.
         $this->registerOpportunityMetadata('counterAppealEligibility', [
-            'label' => i::__('Quem pode apresentar contrarrazões'),
+            'label' => i::__('Quem pode apresentar contrarrazões (obsoleto)'),
             'type' => 'select',
-            'default' => self::ELIGIBILITY_ALL,
+            'default' => self::ELIGIBILITY_SAME_PHASE,
             'options' => [
                 self::ELIGIBILITY_ALL => i::__('Todos os inscritos na oportunidade'),
                 self::ELIGIBILITY_SAME_PHASE => i::__('Somente inscritos na mesma etapa do recurso'),
@@ -317,7 +327,8 @@ class Plugin extends \MapasCulturais\Plugin
     }
 
     /**
-     * Fase que define quem pode apresentar contrarrazões
+     * Fase que define quem pode apresentar contrarrazões: sempre a etapa avaliada que recebeu o
+     * recurso (só quem está nessa etapa pode contestar). O metadado counterAppealEligibility é ignorado.
      */
     function getEligibilityBasePhase(Opportunity $counter): ?Opportunity
     {
@@ -326,13 +337,7 @@ class Plugin extends \MapasCulturais\Plugin
             return null;
         }
 
-        $evaluated_phase = $appeal_phase->parent;
-
-        if (Plugin::meta($counter, 'counterAppealEligibility') === self::ELIGIBILITY_SAME_PHASE) {
-            return $evaluated_phase;
-        }
-
-        return $evaluated_phase->firstPhase;
+        return $appeal_phase->parent;
     }
 
     /**
@@ -443,9 +448,7 @@ class Plugin extends \MapasCulturais\Plugin
 
         $candidate_ids = array_map(fn ($r) => $r->id, $this->getUserCandidateRegistrations($counter, $user));
         if (!in_array($author->id, $candidate_ids, true)) {
-            return Plugin::meta($counter, 'counterAppealEligibility') === self::ELIGIBILITY_SAME_PHASE
-                ? i::__('Somente inscritos na mesma etapa do recurso podem apresentar contrarrazões.')
-                : i::__('Somente inscritos na oportunidade podem apresentar contrarrazões.');
+            return i::__('Somente inscritos na mesma etapa do recurso podem apresentar contrarrazões.');
         }
 
         if ((string) $author->number === (string) $appeal->number) {
@@ -615,7 +618,7 @@ class Plugin extends \MapasCulturais\Plugin
         $data = $counter->jsonSerialize();
         $data['@entityType'] = 'opportunity';
         $data['isRegistrationOpen'] = $counter->isRegistrationOpen();
-        $data['counterAppealEligibility'] = Plugin::meta($counter, 'counterAppealEligibility') ?: self::ELIGIBILITY_ALL;
+        $data['counterAppealEligibility'] = self::ELIGIBILITY_SAME_PHASE; // fixo desde a 1.1.0
         $data['counterAppealPublicFields'] = array_values((array) Plugin::meta($counter, 'counterAppealPublicFields'));
         $data['formBuilderUrl'] = App::i()->createUrl('opportunity', 'formBuilder', [$counter->id]);
 
@@ -741,13 +744,8 @@ class Plugin extends \MapasCulturais\Plugin
             $appeal_phase = $self->getAppealPhase($counter);
             $data = $this->data;
 
-            if (isset($data['counterAppealEligibility'])) {
-                $eligibility = $data['counterAppealEligibility'];
-                if (!in_array($eligibility, [Plugin::ELIGIBILITY_ALL, Plugin::ELIGIBILITY_SAME_PHASE], true)) {
-                    $this->errorJson(i::__('Opção de elegibilidade inválida.'), 400);
-                }
-                $counter->counterAppealEligibility = $eligibility;
-            }
+            // a elegibilidade não é mais configurável (sempre a mesma etapa do recurso):
+            // counterAppealEligibility enviado por clientes antigos é ignorado
 
             if (array_key_exists('counterAppealPublicFields', $data)) {
                 $allowed = array_map(fn ($f) => $f['name'], $self->getPhaseFormFields($appeal_phase, true));
@@ -936,7 +934,7 @@ class Plugin extends \MapasCulturais\Plugin
             $counter->isDataCollection = true;
             $counter->isCounterAppealPhase = true;
             $counter->counterAppealOf = $appeal_phase->id;
-            $counter->counterAppealEligibility = self::ELIGIBILITY_ALL;
+            $counter->counterAppealEligibility = self::ELIGIBILITY_SAME_PHASE; // fixo desde a 1.1.0
             $counter->counterAppealPublicFields = [];
             $counter->save(true);
 
@@ -1101,7 +1099,9 @@ class Plugin extends \MapasCulturais\Plugin
         $app = App::i();
         $self = $this;
 
-        // aba de configuração na edição da oportunidade (gestor)
+        // dados da configuração das contrarrazões na edição da oportunidade (gestor).
+        // Não imprime aba: o componente é encaixado na "Etapa de recurso" da aba Configuração de
+        // fases, entre os acordeões "Recurso" e "Resposta do recurso" (veja o hook abaixo).
         $app->hook('template(opportunity.edit.tabs):end', function () use ($self) {
             /** @var \MapasCulturais\Themes\BaseV2\Theme $this */
             $opportunity = $this->controller->requestedEntity;
@@ -1109,10 +1109,9 @@ class Plugin extends \MapasCulturais\Plugin
                 return;
             }
 
+            // importa o componente mesmo sem fase de recurso: se o gestor criar o recurso agora,
+            // o acordeão "Contrarrazões" já aparece (com o botão de adicionar)
             $appeal_phases = $self->getAppealPhasesOfOpportunity($opportunity);
-            if (!$appeal_phases) {
-                return;
-            }
 
             $config = [];
             foreach ($appeal_phases as $appeal_phase) {
@@ -1155,25 +1154,49 @@ class Plugin extends \MapasCulturais\Plugin
 
             $this->jsObject['config']['counterAppealConfig'] = $config;
             $this->import('counter-appeal-config');
-            $this->part('contrarrazoes/edit-tab');
         });
 
-        // aba pública na página da oportunidade (candidatos)
-        $app->hook('template(opportunity.single.tabs):end', function () use ($self, $app) {
+        // O componente "opportunity-appeal-phase-config" (módulo OpportunityAppealPhase) não tem
+        // ponto de encaixe entre os acordeões "Recurso" e "Resposta do recurso". Em vez de copiar o
+        // template do núcleo, o plugin insere o acordeão "Contrarrazões" no template já renderizado,
+        // logo antes de ele ir para a página ($TEMPLATES é impresso em mapas.printJsObject:after,
+        // prioridade 10). Se a marcação mudar numa atualização do Mapas, o acordeão vai para o fim
+        // da etapa de recurso e um aviso é registrado no log.
+        $app->hook('mapas.printJsObject:after', function () use ($self, $app) {
+            $templates = $app->components->templates ?? [];
+            if (!isset($templates['opportunity-appeal-phase-config'], $templates['counter-appeal-config'])) {
+                return;
+            }
+            $app->components->templates['opportunity-appeal-phase-config'] = $self->injectCounterAppealConfig($templates['opportunity-appeal-phase-config']);
+        }, 5);
+
+        // dados das contrarrazões para a linha do tempo da inscrição do candidato (aba Acompanhamento).
+        // A contrarrazão é apresentada pela inscrição da página: quem tem mais de uma inscrição no
+        // edital escolhe a inscrição ao abrir a página dela. Não imprime nada: só alimenta o
+        // componente counter-appeal-timeline, encaixado na linha do tempo (hook abaixo).
+        // /inscricao/{id}/ é renderizada pela ação "view" (registration/single.php); "single" fica por garantia
+        $app->hook('template(registration.<<view|single>>.single-tab):begin', function () use ($self, $app) {
             /** @var \MapasCulturais\Themes\BaseV2\Theme $this */
-            $opportunity = $this->controller->requestedEntity;
-            if (!$opportunity instanceof Opportunity || Plugin::meta($opportunity, 'isCounterAppealPhase')) {
+            $registration = $this->controller->requestedEntity;
+            if (!$registration instanceof Registration || $app->user->is('guest')
+                || Plugin::meta($registration->opportunity, 'isCounterAppealPhase')) {
                 return;
             }
 
+            // somente o dono da inscrição: o gestor acompanha pela aba Contrarrazões da oportunidade
+            if ($registration->owner?->user?->id !== $app->user->id) {
+                return;
+            }
+
+            $edital = $registration->opportunity->firstPhase;
             $phases = [];
-            foreach ($self->getAppealPhasesOfOpportunity($opportunity) as $appeal_phase) {
+            foreach ($self->getAppealPhasesOfOpportunity($edital) as $appeal_phase) {
                 $counter = $self->getCounterAppealPhase($appeal_phase);
                 if (!$counter || !$self->isCounterAppealListVisible($counter)) {
                     continue;
                 }
 
-                $phases[] = $self->buildPublicPhaseData($appeal_phase, $counter);
+                $phases[] = $self->buildPublicPhaseData($appeal_phase, $counter, $registration);
             }
 
             if (!$phases) {
@@ -1181,12 +1204,21 @@ class Plugin extends \MapasCulturais\Plugin
             }
 
             $this->jsObject['config']['counterAppealList'] = [
-                'isGuest' => $app->user->is('guest'),
-                'loginUrl' => $app->createUrl('auth', 'index') . '?redirectTo=' . urlencode($opportunity->singleUrl . '#contrarrazoes'),
+                'isGuest' => false,
+                'loginUrl' => null,
+                'registrationNumber' => $registration->number,
                 'phases' => $phases,
             ];
-            $this->import('counter-appeal-list');
-            $this->part('contrarrazoes/single-tab');
+        });
+
+        // bloco "[Contrarrazões]" na linha do tempo do candidato, ao final do item da fase que teve
+        // recurso, ou seja, logo abaixo do botão "Solicitar recurso" / quadro "[Recurso]".
+        // O componente só aparece para inscrições que estão na etapa do recurso (canSeeList).
+        // Mesmo padrão do módulo OpportunityExecution do núcleo.
+        $app->hook('component(opportunity-phases-timeline).item:end', function () {
+            /** @var \MapasCulturais\Themes\BaseV2\Theme $this */
+            $this->import('counter-appeal-timeline');
+            echo '<counter-appeal-timeline :phase="item"></counter-appeal-timeline>';
         });
 
         // faixa informativa na contrarrazão: qual recurso está sendo contestado
@@ -1199,12 +1231,15 @@ class Plugin extends \MapasCulturais\Plugin
 
             $counter = $registration->opportunity;
             $appeal = ($id = (int) Plugin::meta($registration, 'counterAppealTarget')) ? $app->repo('Registration')->find($id) : null;
-            $edital = $self->getAppealPhase($counter)?->parent?->firstPhase;
+
+            // a lista de recursos fica na página da inscrição que apresentou a contrarrazão
+            $author_number = (string) Plugin::meta($registration, 'counterAppealAuthorNumber');
+            $author = $author_number ? $self->findAuthorRegistration($counter, $author_number) : null;
 
             $this->part('contrarrazoes/registration-banner', [
                 'appeal' => $appeal,
                 'counter' => $counter,
-                'listUrl' => $edital ? $edital->singleUrl . '#contrarrazoes' : null,
+                'listUrl' => $author ? $self->getCounterAppealListUrl($author, $counter) : null,
             ]);
         });
 
@@ -1245,24 +1280,89 @@ class Plugin extends \MapasCulturais\Plugin
     }
 
     /**
-     * Dados de uma fase de contrarrazões para a aba pública
+     * Insere o acordeão "Contrarrazões" no template da etapa de recurso, entre "Recurso" e
+     * "Resposta do recurso" (o primeiro </mc-accordion> do template é o fim do acordeão "Recurso").
      */
-    function buildPublicPhaseData(Opportunity $appeal_phase, Opportunity $counter): array
+    function injectCounterAppealConfig(string $template): string
+    {
+        $tag = '<counter-appeal-config v-if="tab === \'config\'" :appeal-phase-id="entity.id"></counter-appeal-config>';
+
+        if (str_contains($template, '<counter-appeal-config')) {
+            return $template;
+        }
+
+        $marker = '</mc-accordion>';
+        $position = strpos($template, $marker);
+        if ($position !== false && substr_count($template, $marker) >= 2) {
+            $position += strlen($marker);
+            return substr($template, 0, $position) . "\n" . $tag . substr($template, $position);
+        }
+
+        // marcação inesperada: o acordeão vai para o fim da etapa de recurso
+        App::i()->log->warning('Contrarrazoes: não encontrei o acordeão "Recurso" no template opportunity-appeal-phase-config; a configuração das contrarrazões foi colocada no fim da etapa de recurso.');
+        $last = strrpos($template, '</div>');
+        return $last === false ? $template . $tag : substr($template, 0, $last) . $tag . substr($template, $last);
+    }
+
+    /**
+     * Endereço da linha do tempo da inscrição com a lista de recursos já aberta
+     * (o componente counter-appeal-timeline abre o modal quando vê ?contrarrazoes={id da fase})
+     */
+    function getCounterAppealListUrl(Registration $registration, Opportunity $counter): string
+    {
+        // usa o endereço da inscrição na 1ª fase (o mesmo de "Minhas inscrições"); a página é a mesma
+        $first = $registration->opportunity->firstPhase;
+        if ($first && !$registration->opportunity->equals($first)) {
+            $registration = App::i()->repo('Registration')->findOneBy(['opportunity' => $first, 'number' => $registration->number]) ?: $registration;
+        }
+
+        return $registration->singleUrl . '?contrarrazoes=' . $counter->id . '#acompanhamento';
+    }
+
+    /**
+     * Inscrição do edital com um número (a da fase que define a elegibilidade, ou a da primeira fase)
+     */
+    function findAuthorRegistration(Opportunity $counter, string $number): ?Registration
+    {
+        $app = App::i();
+        $base_phase = $this->getEligibilityBasePhase($counter);
+        $edital = $this->getAppealPhase($counter)?->parent?->firstPhase;
+
+        foreach (array_filter([$base_phase, $edital]) as $phase) {
+            if ($registration = $app->repo('Registration')->findOneBy(['opportunity' => $phase, 'number' => $number])) {
+                return $registration;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Dados de uma fase de contrarrazões para a aba "Recursos e contrarrazões" da inscrição.
+     *
+     * @param Registration|null $registration inscrição cuja página está aberta: só ela pode ser a autora
+     */
+    function buildPublicPhaseData(Opportunity $appeal_phase, Opportunity $counter, ?Registration $registration = null): array
     {
         $app = App::i();
         $user = $app->user;
 
-        $candidates = $this->getUserCandidateRegistrations($counter, $user);
+        $all_candidates = $this->getUserCandidateRegistrations($counter, $user);
+        $candidates = $registration
+            ? array_values(array_filter($all_candidates, fn ($r) => (string) $r->number === (string) $registration->number))
+            : $all_candidates;
         $can_see_list = $candidates || $counter->canUser('@control');
 
         $data = [
             'counterId' => $counter->id,
+            // fase avaliada que recebeu o recurso: é nela que o bloco aparece na linha do tempo
+            'evaluatedPhaseId' => $appeal_phase->parent?->id,
             'appealPhaseName' => $appeal_phase->name,
             'evaluatedPhaseName' => $appeal_phase->parent?->evaluationMethodConfiguration?->name ?: $appeal_phase->parent?->name,
             'registrationFrom' => $counter->registrationFrom?->format('Y-m-d H:i:s'),
             'registrationTo' => $counter->registrationTo?->format('Y-m-d H:i:s'),
             'isOpen' => $counter->isRegistrationOpen(),
-            'eligibility' => Plugin::meta($counter, 'counterAppealEligibility') ?: self::ELIGIBILITY_ALL,
+            'eligibility' => self::ELIGIBILITY_SAME_PHASE,
             'canSeeList' => $can_see_list,
             'authorRegistrations' => array_map(fn ($r) => [
                 'id' => $r->id,
@@ -1277,7 +1377,11 @@ class Plugin extends \MapasCulturais\Plugin
         }
 
         $public_fields = array_values((array) Plugin::meta($counter, 'counterAppealPublicFields'));
-        $my_numbers = array_map(fn ($r) => (string) $r->number, $candidates);
+        // recursos de qualquer inscrição do usuário contam como "seus" (não podem ser contestados por ele)
+        $my_numbers = array_map(fn ($r) => (string) $r->number, $all_candidates);
+        if ($registration) {
+            $my_numbers[] = (string) $registration->number;
+        }
 
         foreach ($this->getSentAppeals($appeal_phase) as $appeal) {
             $mine = [];
