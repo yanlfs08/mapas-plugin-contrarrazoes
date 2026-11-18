@@ -15,8 +15,8 @@ $this->import('
 <mc-container class="counter-appeal-list">
     <main class="grid-12">
         <div v-for="phase in phases" :key="phase.counterId" class="col-12 counter-appeal-list__phase">
-            <h3 class="bold"><?= i::__('Contrarrazões aos recursos') ?> — {{ phase.evaluatedPhaseName }}</h3>
-            <p class="counter-appeal-list__period">
+            <h3 v-if="!hideHeader" class="bold"><?= i::__('Contrarrazões aos recursos') ?> — {{ phase.evaluatedPhaseName }}</h3>
+            <p v-if="!hideHeader" class="counter-appeal-list__period">
                 <?= i::__('Prazo para apresentar contrarrazões') ?>:
                 <strong>{{ formatDate(phase.registrationFrom) }}</strong> <?= i::__('a') ?> <strong>{{ formatDate(phase.registrationTo) }}</strong>
                 <span v-if="phase.isOpen" class="counter-appeal-list__badge counter-appeal-list__badge--open"><?= i::__('aberto') ?></span>
@@ -29,18 +29,17 @@ $this->import('
             </mc-alert>
 
             <mc-alert v-else-if="!phase.canSeeList" type="helper">
-                <template v-if="phase.eligibility === 'samePhase'">
-                    <?= i::__('Somente inscritos na mesma etapa dos recursos podem ler os recursos e apresentar contrarrazões.') ?>
-                </template>
-                <template v-else>
-                    <?= i::__('Somente inscritos nesta oportunidade podem ler os recursos e apresentar contrarrazões.') ?>
-                </template>
+                <?= i::__('Somente inscrições que participam da mesma etapa dos recursos podem ler os recursos e apresentar contrarrazões. Esta inscrição não está nessa etapa.') ?>
             </mc-alert>
 
             <template v-else>
                 <p class="counter-appeal-list__help">
                     <?= i::__('Leia os recursos apresentados pelos demais candidatos. Se algum deles puder prejudicar a sua situação no edital, você pode apresentar uma contrarrazão (uma por recurso) dentro do prazo.') ?>
                 </p>
+                <mc-alert v-if="registrationNumber" type="helper">
+                    <?= i::__('As contrarrazões apresentadas aqui ficam vinculadas à inscrição') ?> <strong>{{ registrationNumber }}</strong>.
+                    <?= i::__('Se você tiver outra inscrição neste edital, use a linha do tempo da outra inscrição para apresentar contrarrazões por ela.') ?>
+                </mc-alert>
 
                 <div v-if="phase.appeals.length > 5" class="field counter-appeal-list__filter">
                     <input type="search" v-model="filters[phase.counterId]" placeholder="<?= i::esc_attr__('Buscar por número da inscrição ou nome do proponente') ?>">

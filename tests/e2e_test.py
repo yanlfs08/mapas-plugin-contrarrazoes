@@ -14,6 +14,7 @@ contrarrazão e a trava do julgamento.
 import datetime as dt
 import json
 import os
+import re
 import sys
 
 from playwright.sync_api import expect, sync_playwright
@@ -48,37 +49,47 @@ def main(scenario_path, shots_dir):
         print('1. gestor configura a fase')
         ctx = browser.new_context(viewport={'width': 1366, 'height': 900}, locale='pt-BR', timezone_id='UTC')
         page = login(ctx, u['gestor'])
-        page.goto(f'{BASE_URL}/gestao-de-oportunidade/{opp}/#contrarrazoes')
+        page.goto(f'{BASE_URL}/gestao-de-oportunidade/{opp}/#config')
         page.wait_for_load_state('networkidle')
         take_control = page.get_by_role('button', name='Assumir controle')
         if take_control.count():  # a oportunidade pode estar bloqueada por outra sessão de edição
             take_control.click()
             page.wait_for_load_state('networkidle')
-        page.get_by_text('Contrarrazões', exact=True).first.click()
-        expect(page.get_by_text('Contrarrazões aos recursos')).to_be_visible()
-        shot(page, 'gestor-aba-contrarrazoes')
 
-        page.get_by_role('button', name='Adicionar contrarrazões').click()
-        expect(page.get_by_text('Prazo para apresentar contrarrazões')).to_be_visible(timeout=15000)
+        # Configuração de fases → fase avaliada (Mérito) → Etapa de recurso → acordeão "Contrarrazões"
+        # (entre os acordeões "Recurso" e "Resposta do recurso")
+        merit = page.locator('li').filter(has=page.get_by_role('heading', name='Mérito', exact=True)).first
+        merit.get_by_text('Expandir').first.click()
+        config = page.locator('.counter-appeal-config')
+        expect(config).to_be_visible(timeout=15000)
+        titles = page.locator('.opportunity-appeal-phase-config__appeals h3.bold').all_inner_texts()
+        order = [t.split('\n')[0].strip() for t in titles if t.strip()]
+        assert order.index('Contrarrazões') == order.index('Recurso') + 1 < order.index('Resposta do recurso'), order
+        config.get_by_text('Expandir').first.click()
+        shot(page, 'gestor-etapa-de-recurso')
+
+        config.get_by_role('button', name='Adicionar contrarrazões').click()
+        expect(config.get_by_text('Quem pode apresentar contrarrazões')).to_be_visible(timeout=15000)
 
         start = (dt.datetime.now() - dt.timedelta(days=1))
         end = (dt.datetime.now() + dt.timedelta(days=3))
-        set_datetime(page, 'registrationFrom', start)
-        set_datetime(page, 'registrationTo', end)
+        set_datetime(config, 'registrationFrom', start)
+        set_datetime(config, 'registrationTo', end)
 
-        page.get_by_label('Fundamentação do recurso').check()
-        page.get_by_label('Documento do recurso').check()
-        expect(page.get_by_label('CPF do responsável')).to_have_count(0)
-        page.get_by_role('button', name='Salvar configurações').click()
+        config.get_by_label('Fundamentação do recurso').check()
+        config.get_by_label('Documento do recurso').check()
+        expect(config.get_by_label('CPF do responsável')).to_have_count(0)
+        config.get_by_role('button', name='Salvar configurações').click()
         expect(page.get_by_text('Configurações salvas')).to_be_visible(timeout=15000)
         shot(page, 'gestor-configuracao-salva')
         ctx.close()
 
-        # 2. candidata eliminada na 1ª fase apresenta contrarrazão ao recurso de C3
-        print('2. candidata C5 apresenta contrarrazão')
+        # 2. candidata que está na etapa do recurso apresenta contrarrazão ao recurso de C3
+        print('2. candidata C1 (no Mérito, sem recurso) apresenta contrarrazão')
         ctx = browser.new_context(viewport={'width': 1366, 'height': 900}, locale='pt-BR', timezone_id='UTC')
-        page = login(ctx, u['c5'])
-        page.goto(f'{BASE_URL}/oportunidade/{opp}/#contrarrazoes')
+        page = login(ctx, u['c1'])
+        registration_c1 = f"{BASE_URL}/inscricao/{sc['first']['c1']}/"
+        open_counter_appeals(page, registration_c1)
         expect(page.get_by_text('Recurso da inscrição').first).to_be_visible(timeout=15000)
         expect(page.get_by_text('A proposta atende a todos os critérios do edital.').first).to_be_visible()
         expect(page.get_by_text('123.456.789-09')).to_have_count(0)
@@ -86,7 +97,8 @@ def main(scenario_path, shots_dir):
 
         card = page.locator('.counter-appeal-list__appeal').filter(has_text=sc['appealNumbers']['c3'])
         card.get_by_role('button', name='Apresentar contrarrazão').click()
-        page.wait_for_url('**/inscricao/**', timeout=20000)
+        # sai da página da inscrição da C1 e vai para o formulário da contrarrazão
+        page.wait_for_url(lambda url: '/inscricao/' in url and f"/{sc['first']['c1']}/" not in url, timeout=20000)
         page.wait_for_load_state('networkidle')
         shot(page, 'candidata-formulario-contrarrazao')
 
@@ -100,7 +112,7 @@ def main(scenario_path, shots_dir):
         page.wait_for_timeout(5000)
         shot(page, 'candidata-contrarrazao-enviada')
 
-        page.goto(f'{BASE_URL}/oportunidade/{opp}/#contrarrazoes')
+        open_counter_appeals(page, registration_c1)
         card = page.locator('.counter-appeal-list__appeal').filter(has_text=sc['appealNumbers']['c3'])
         expect(card.get_by_text('Ver contrarrazão enviada')).to_be_visible(timeout=15000)
         expect(card.get_by_role('button', name='Apresentar contrarrazão')).to_have_count(0)
@@ -111,8 +123,8 @@ def main(scenario_path, shots_dir):
         print('3. autora do recurso (C3)')
         ctx = browser.new_context(viewport={'width': 1366, 'height': 900}, locale='pt-BR', timezone_id='UTC')
         page = login(ctx, u['c3'])
-        page.goto(f'{BASE_URL}/oportunidade/{opp}/#contrarrazoes')
-        own = page.locator('.counter-appeal-list__appeal').filter(has_text=sc['appealNumbers']['c3'])
+        open_counter_appeals(page, f"{BASE_URL}/inscricao/{sc['first']['c3']}/")
+        own =page.locator('.counter-appeal-list__appeal').filter(has_text=sc['appealNumbers']['c3'])
         expect(own.get_by_text('Seu recurso')).to_be_visible(timeout=15000)
         expect(own.get_by_role('button', name='Apresentar contrarrazão')).to_have_count(0)
         other = page.locator('.counter-appeal-list__appeal').filter(has_text=sc['appealNumbers']['c2'])
@@ -124,9 +136,21 @@ def main(scenario_path, shots_dir):
         print('4. pessoa sem inscrição (C6)')
         ctx = browser.new_context(viewport={'width': 1366, 'height': 900}, locale='pt-BR', timezone_id='UTC')
         page = login(ctx, u['c6'])
-        page.goto(f'{BASE_URL}/oportunidade/{opp}/#contrarrazoes')
-        expect(page.get_by_text('Somente inscritos nesta oportunidade podem ler os recursos')).to_be_visible(timeout=15000)
+        page.goto(f'{BASE_URL}/oportunidade/{opp}/')
+        page.wait_for_load_state('networkidle')
+        expect(page.locator('.counter-appeal-list')).to_have_count(0)
+        expect(page.get_by_text('A proposta atende a todos os critérios do edital.')).to_have_count(0)
         shot(page, 'nao-inscrito')
+        ctx.close()
+
+        # 4b. eliminada antes da etapa do recurso: não vê o bloco [Contrarrazões]
+        print('4b. eliminada na 1ª fase (C5)')
+        ctx = browser.new_context(viewport={'width': 1366, 'height': 900}, locale='pt-BR', timezone_id='UTC')
+        page = login(ctx, u['c5'])
+        page.goto(f"{BASE_URL}/inscricao/{sc['first']['c5']}/#acompanhamento")
+        page.wait_for_load_state('networkidle')
+        expect(page.locator('.counter-appeal-timeline')).to_have_count(0)
+        shot(page, 'eliminada-sem-bloco')
         ctx.close()
 
         # 5. avaliador vê a contrarrazão e a trava do julgamento
@@ -145,9 +169,20 @@ def main(scenario_path, shots_dir):
     return 0
 
 
-def set_datetime(page, prop, value):
-    """Preenche um entity-field de data e hora (campo de data e campo de hora com máscara)."""
-    field = page.locator(f'[data-field="{prop}"]').first
+def open_counter_appeals(page, registration_url):
+    """Abre a inscrição, acha o bloco [Contrarrazões] na linha do tempo e abre o modal com os recursos."""
+    page.goto(f'{registration_url}#acompanhamento')
+    block = page.locator('.counter-appeal-timeline')
+    expect(block).to_be_visible(timeout=15000)
+    # o bloco fica no item da fase avaliada, abaixo do "Solicitar recurso" quando ele existe
+    block.get_by_role('button', name=re.compile('^Ver recursos')).click()
+    expect(page.locator('.modal-content .counter-appeal-list')).to_be_visible(timeout=10000)
+
+
+def set_datetime(scope, prop, value):
+    """Preenche um entity-field de data e hora (campo de data e campo de hora com máscara) dentro de scope."""
+    page = scope.page if hasattr(scope, 'page') else scope
+    field = scope.locator(f'[data-field="{prop}"]').first
     date_input = field.locator('input.date-input')
     date_input.click()
     date_input.press_sequentially(value.strftime('%d%m%Y'), delay=30)

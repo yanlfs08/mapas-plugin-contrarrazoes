@@ -10,7 +10,7 @@ Instalação: este repositório inteiro vira a pasta `src/plugins/Contrarrazoes`
 
 ## Requisitos funcionais (definidos pelo usuário)
 
-- **Elegibilidade:** configurável por fase, pelo gestor. Pode ser *todos os inscritos na oportunidade* (inclusive eliminados em fases anteriores) ou *somente inscritos na mesma etapa do recurso*.
+- **Elegibilidade:** **sempre** os inscritos na mesma etapa do recurso (a fase avaliada, `getEligibilityBasePhase()`). Não é configurável desde a 1.1.0: o metadado `counterAppealEligibility` continua registrado só por compatibilidade e é ignorado (inclusive se um cliente antigo o enviar).
 - **Uma contrarrazão por recurso** por inscrição. O mesmo candidato pode contestar vários recursos.
 - **Autor não contesta o próprio recurso.**
 - **Trava do julgamento:** a comissão não finaliza a avaliação e ninguém defere/indefere o recurso antes do fim do prazo de contrarrazões. Sem prazo definido, o julgamento fica travado.
@@ -20,20 +20,23 @@ Instalação: este repositório inteiro vira a pasta `src/plugins/Contrarrazoes`
 ## Arquitetura
 
 - `Plugin.php`: toda a lógica (metadados, hooks de permissão, endpoints, trava do julgamento, template hooks).
-- **Fase de contrarrazões** = `Opportunity` de **primeiro nível** (sem parent), status `-1` (`STATUS_PHASE`), com os metadados `isCounterAppealPhase`, `counterAppealOf`, `counterAppealEligibility` e `counterAppealPublicFields`. A fase de recurso guarda `counterAppealPhase`.
+- **Fase de contrarrazões** = `Opportunity` de **primeiro nível** (sem parent), status `-1` (`STATUS_PHASE`), com os metadados `isCounterAppealPhase`, `counterAppealOf` e `counterAppealPublicFields` (`counterAppealEligibility` é obsoleto). A fase de recurso guarda `counterAppealPhase`.
   - Por que primeiro nível: `registration/single.php` faz `$entity->firstPhase`. Como filha da fase de recurso, `firstPhase` não existiria e a página quebraria.
   - Por que status -1: `Registration::canUserView/canUserSend` só aceitam oportunidades com status em `[-1, 1, -20]`. O -20 dispara a lógica nativa de recurso, e o 1 aparece nas buscas.
   - O `OpportunityPhases` cria automaticamente uma "Publicação final do resultado" filha. Isso é inofensivo.
 - **Contrarrazão** = `Registration` na fase de contrarrazões, com os metadados `counterAppealTarget` (id do recurso) e `counterAppealAuthorNumber` (número da inscrição do autor).
 - **Endpoints** (hooks em controladores existentes; no JS use `entity.invoke(action, data)`):
   - `POST opportunity.createCounterAppealPhase/{id da fase de recurso}`
-  - `POST opportunity.saveCounterAppealConfig/{id da fase de contrarrazões}` (datas, elegibilidade, campos públicos)
+  - `POST opportunity.saveCounterAppealConfig/{id da fase de contrarrazões}` (datas e campos públicos)
   - `POST opportunity.deleteCounterAppealPhase/{id}`
   - `POST opportunity.createCounterAppealRegistration/{id}` (`appeal_registration_id`, `author_registration_id`)
   - `GET opportunity.counterAppealFile/{id}/file:{fileId}` (download dos anexos públicos do recurso)
 - **Telas:**
-  - `template(opportunity.edit.tabs):end` → aba do gestor (`counter-appeal-config`)
-  - `template(opportunity.single.tabs):end` → aba pública (`counter-appeal-list`)
+  - `template(opportunity.edit.tabs):end` → não imprime aba: monta `jsObject.config.counterAppealConfig` e importa `counter-appeal-config`.
+  - `mapas.printJsObject:after` (prioridade 5, antes do `$TEMPLATES` ser impresso) → `Plugin::injectCounterAppealConfig()` insere `<counter-appeal-config :appeal-phase-id="entity.id">` no template `opportunity-appeal-phase-config` do núcleo, logo depois do primeiro `</mc-accordion>` (acordeão "Recurso"), antes de "Resposta do recurso". O componente do núcleo não tem ponto de encaixe ali: **não copie o template do núcleo**. Se a marcação mudar, o acordeão vai para o fim da etapa de recurso e um aviso vai para o log. Candidato a PR upstream: `applyComponentHook` entre os dois acordeões.
+  - `template(registration.<<view|single>>.single-tab):begin` → não imprime nada: monta `jsObject.config.counterAppealList` para a inscrição da página (a autora da contrarrazão é sempre ela, mesmo número). Só para o dono da inscrição. A ação da página `/inscricao/{id}/` é `view`, não `single`.
+  - `component(opportunity-phases-timeline).item:end` → bloco **[Contrarrazões]** (`counter-appeal-timeline`) na linha do tempo, no item da fase avaliada (`evaluatedPhaseId`), logo abaixo do "Solicitar recurso" de `registration-status`. Fica no item (mesmo padrão do módulo `OpportunityExecution`) e só aparece quando `canSeeList` é verdadeiro, ou seja, para inscrições que estão na etapa do recurso. O botão abre um `mc-modal` com `counter-appeal-list` (props `counter-id` e `hide-header`). `?contrarrazoes={id}` na URL abre o modal sozinho.
+  - Não há lista de recursos na página pública da oportunidade (removida na 1.1.0).
   - `template(registration.evaluation.registration-appealPhase-evaluation-view):after` → bloco da comissão (`counter-appeal-evaluation`)
   - `template(registration.<<view|edit|single>>.main-header):after` → faixa com o recurso contestado
   - Os dados vão para o Vue via `$this->jsObject['config'][...]`.
@@ -59,7 +62,7 @@ Os testes só rodam em DESENVOLVIMENTO, com o provedor de login `Fake` habilitad
    - Rode as etapas `appeals <id>` e `committee <id>`.
 2. Monte `tests/scenario.json` (modelo em `tests/scenario.example.json`). No avaliador, a relação da comissão precisa de `has_control = true` e a inscrição precisa ter `valuers` preenchido.
 3. Tire um snapshot do banco (`pg_dump -Fc`) para restaurar entre execuções.
-4. Rode `python3 tests/api_test.py tests/scenario.json`. O esperado é 39/39.
+4. Rode `python3 tests/api_test.py tests/scenario.json`. O esperado é 43/43.
 5. Rode `python3 tests/e2e_test.py tests/scenario.json /tmp/capturas` (Playwright + Chrome).
 6. Para usuários de teste com perfil incompleto, use `'app.redirect_profile_validate' => false` na configuração local, senão eles são redirecionados para a edição do perfil.
 
