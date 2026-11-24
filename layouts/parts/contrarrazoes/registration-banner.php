@@ -19,7 +19,6 @@ $resultPublished = $resultPublished ?? false;
 <div class="counter-appeal-banner" v-pre>
     <div class="counter-appeal-banner__content">
         <strong><?= i::__('Contrarrazão ao recurso da inscrição') ?> <?= $e($appeal?->number) ?></strong>
-        <?php if ($appeal?->owner): ?> — <?= $e($appeal->owner->name) ?><?php endif; ?>
         <?php if ($counter->registrationTo): ?>
             <span class="counter-appeal-banner__deadline">
                 · <?= i::__('prazo até') ?> <?= $e($counter->registrationTo->format('d/m/Y H:i')) ?>

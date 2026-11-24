@@ -100,6 +100,7 @@ def main(path):
     check('linha do tempo de quem está na etapa recebe as contrarrazões', '"counterAppealList"' in page and 'counter-appeal-timeline' in page)
     check('fundamentação pública aparece', 'A proposta atende a todos os crit' in page)
     check('CPF não aparece', '123.456.789-09' not in page)
+    check('nome do autor do recurso não aparece para outro candidato', 'Candidata Três' not in page and 'Candidato Dois' not in page)
 
     page = c5.get(f"/inscricao/{first['c5']}/").text
     check('eliminada antes da etapa não recebe o conteúdo dos recursos', 'A proposta atende a todos os crit' not in page)
@@ -273,6 +274,7 @@ def main(path):
     check('ficha da contrarrazão mostra a resposta depois da publicação', resposta in page)
     page = c3.get(f"/inscricao/{first['c3']}/").text
     check('autor do recurso vê a resposta depois da publicação', resposta in page)
+    check('autor do recurso não vê o nome de quem contestou', 'Candidata Um' not in page)
     page = c2.get(f"/inscricao/{first['c2']}/").text
     check('quem não participou não vê a resposta', resposta not in page)
 

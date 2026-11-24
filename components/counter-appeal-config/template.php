@@ -87,7 +87,7 @@ $this->import('
 
                     <section class="counter-appeal-config__section">
                         <h5 class="bold"><?= i::__('Campos do recurso visíveis para os candidatos') ?></h5>
-                        <p class="counter-appeal-config__muted"><?= i::__('Marque o que os candidatos poderão ler de cada recurso. O número da inscrição e o nome do proponente são sempre exibidos.') ?></p>
+                        <p class="counter-appeal-config__muted"><?= i::__('Marque o que os candidatos poderão ler de cada recurso. O número da inscrição é sempre exibido; o nome do proponente nunca aparece para os candidatos.') ?></p>
                         <mc-alert type="helper">
                             <?= i::__('Por proteção de dados pessoais (LGPD), campos de CPF, CNPJ, e-mail, telefone, endereço, dados bancários, pessoas, agentes e espaços não podem ser publicados.') ?>
                         </mc-alert>

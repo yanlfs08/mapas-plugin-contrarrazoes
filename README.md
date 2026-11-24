@@ -58,7 +58,7 @@ Desenvolvido para o Mapa Cultural BH (Fundação Municipal de Cultura / PBH).
 - um aviso quando há contrarrazão iniciada e ainda não enviada;
 - o botão **Ver recursos e apresentar contrarrazão**, que abre um modal com a lista de recursos.
 
-No modal, cada recurso mostra o número da inscrição, o nome do proponente, os campos liberados pelo gestor (texto e anexos para baixar) e o botão **Apresentar contrarrazão**. Depois de enviada, o botão vira **Ver contrarrazão enviada**. O recurso do próprio candidato aparece marcado como **Seu recurso**, sem botão.
+No modal, cada recurso mostra o número da inscrição, a data de envio, os campos liberados pelo gestor (texto e anexos para baixar) e o botão **Apresentar contrarrazão**. Depois de enviada, o botão vira **Ver contrarrazão enviada**. O recurso do próprio candidato aparece marcado como **Seu recurso**, sem botão.
 
 A contrarrazão fica vinculada à inscrição da página. Quem tem mais de uma inscrição no edital usa a linha do tempo da inscrição com a qual quer contestar.
 
@@ -73,7 +73,7 @@ Depois do fim do prazo de contrarrazões, o **avaliador do recurso responde a ca
 **Resposta publicada.** Quando o gestor publica o resultado da etapa de recurso, a resposta aparece para:
 
 - o **autor da contrarrazão**, na faixa da página da contrarrazão e no modal de recursos da linha do tempo;
-- o **autor do recurso**, no modal de recursos da linha do tempo, junto do *Seu recurso* (com o nome e o número da inscrição de quem contestou).
+- o **autor do recurso**, no modal de recursos da linha do tempo, junto do *Seu recurso* (identificada pelo número da inscrição de quem contestou).
 
 A resposta é assinada como "comissão": o nome do avaliador não aparece para os candidatos.
 
@@ -88,7 +88,7 @@ A resposta é assinada como "comissão": o nome do avaliador não aparece para o
 | Trava do julgamento | Enquanto o prazo de contrarrazões não terminar, a comissão não finaliza nem envia a avaliação do recurso, e ninguém defere ou indefere o recurso, nem pela mudança de status nem pelo chat da avaliação contínua. Sem prazo definido, o julgamento continua travado. Rascunhos de parecer são permitidos. |
 | Resposta às contrarrazões | Só o **avaliador designado para o recurso** responde, depois do fim do prazo de contrarrazões. A resposta é **obrigatória**: o avaliador não finaliza a avaliação, ninguém defere ou indefere o recurso (status, chat ou aplicação em lote) e o resultado da etapa de recurso não é publicado enquanto houver contrarrazão enviada sem resposta. Com mais de um avaliador por recurso, cada um responde dentro da própria avaliação. A resposta fica travada depois que o avaliador finaliza a avaliação ou que o resultado é publicado. |
 | Publicidade da resposta | Os candidatos só veem a resposta depois da **publicação do resultado da etapa de recurso**: o autor da contrarrazão e o autor do recurso contestado. Os demais inscritos não veem. |
-| LGPD | Campos de CPF, CNPJ, e-mail, telefone, endereço, dados bancários, pessoas, agentes e espaços **nunca** podem ser publicados. O número da inscrição e o nome do proponente são sempre exibidos. |
+| LGPD | Campos de CPF, CNPJ, e-mail, telefone, endereço, dados bancários, pessoas, agentes e espaços **nunca** podem ser publicados. O número da inscrição é sempre exibido. O **nome dos candidatos nunca aparece** para outros candidatos: nem o do autor do recurso (lista de recursos e faixa da contrarrazão), nem o do autor da contrarrazão. O nome só aparece para gestores e avaliadores. |
 | Visibilidade | Só quem pode apresentar contrarrazão (e os gestores) vê o conteúdo dos recursos e baixa os anexos públicos. A página pública do edital não mostra a lista. |
 
 ## Requisitos
@@ -495,7 +495,7 @@ As regras que dependem de data (prazo e trava) **não** ficam em hooks `can(...)
 |---|---|---|---|
 | `counter-appeal-config` | Acordeão *Contrarrazões* na *Etapa de recurso* (gestor) | `$MAPAS.config.counterAppealConfig`; prop `appeal-phase-id` | Cria a fase, edita o prazo e os campos públicos (`saveCounterAppealConfig`), abre o editor de formulário, exclui a fase e lista as contrarrazões recebidas. Se a fase de recurso foi criada depois do carregamento da página, começa vazio, só com o botão de adicionar. |
 | `counter-appeal-timeline` | Linha do tempo da inscrição, no item da fase avaliada (candidato) | `$MAPAS.config.counterAppealList`; prop `phase` (item da linha do tempo) | Mostra o bloco *[Contrarrazões]* só quando a inscrição pode contestar. Resume recursos e contrarrazões e abre o modal. Com `?contrarrazoes={id}` na URL, abre o modal sozinho. |
-| `counter-appeal-list` | Dentro do modal | `$MAPAS.config.counterAppealList`; props `counter-id` e `hide-header` | Lista os recursos com os campos públicos e os anexos, oferece busca por número ou nome (a partir de 6 recursos), cria a contrarrazão (`createCounterAppealRegistration`) e leva ao formulário. Depois da publicação do resultado, mostra a resposta da comissão às contrarrazões da inscrição e, no *Seu recurso*, as respostas às contrarrazões recebidas. |
+| `counter-appeal-list` | Dentro do modal | `$MAPAS.config.counterAppealList`; props `counter-id` e `hide-header` | Lista os recursos com os campos públicos e os anexos, oferece busca pelo número da inscrição (a partir de 6 recursos), cria a contrarrazão (`createCounterAppealRegistration`) e leva ao formulário. Depois da publicação do resultado, mostra a resposta da comissão às contrarrazões da inscrição e, no *Seu recurso*, as respostas às contrarrazões recebidas. |
 | `counter-appeal-evaluation` | Tela de avaliação do recurso (comissão) | `$MAPAS.config.counterAppealEvaluation` | Mostra as contrarrazões enviadas, o prazo e o aviso da trava. Para cada contrarrazão, mostra o formulário de resposta (classificação e fundamentação, `saveCounterAppealResponse`), o selo *Pendente*/*Respondida* e a resposta registrada, com o botão de editar. |
 
 Os textos de interface ficam em `i::__()` no PHP e em `texts.php` com `Utils.getTexts()` no JavaScript, como no restante do Mapas.
@@ -547,7 +547,7 @@ php src/plugins/Contrarrazoes/tests/seed-scenario.php committee <id da fase de r
 
 # 3. testes
 pip install requests playwright
-MAPAS_URL=http://localhost:8080 python3 tests/api_test.py tests/scenario.json   # 70 verificações de API e regras
+MAPAS_URL=http://localhost:8080 python3 tests/api_test.py tests/scenario.json   # 72 verificações de API e regras
 MAPAS_URL=http://localhost:8080 python3 tests/e2e_test.py tests/scenario.json /tmp/capturas  # fluxo completo no navegador
 ```
 
@@ -560,7 +560,7 @@ Usuários de teste com perfil incompleto são redirecionados para a edição do 
 - O plugin **não envia e-mails** de abertura do prazo nem de contrarrazão recebida. A divulgação é feita pelos canais do edital.
 - A resposta à contrarrazão não é uma avaliação do Mapas (não aparece nos relatórios de avaliação). Ela fica na tabela do acordeão *Contrarrazões* e nas telas descritas acima.
 - A publicação **automática** do resultado da etapa de recurso (data agendada) não passa pelo controlador e, por isso, não é bloqueada pelo plugin. Como deferir e indeferir já exigem as respostas, isso só aconteceria com recursos ainda sem decisão.
-- O autor do recurso vê a resposta e quem contestou, mas não o conteúdo da contrarrazão.
+- O autor do recurso vê a resposta e o número da inscrição que contestou, mas não o conteúdo da contrarrazão.
 - O formulário de contrarrazão não tem ponto de encaixe para mostrar o conteúdo do recurso. Por isso o plugin usa uma faixa no topo da página, com o link para a lista de recursos.
 - O acordeão do gestor é inserido no template do componente nativo de recurso, porque o núcleo não oferece ponto de encaixe entre *Recurso* e *Resposta do recurso*. Um `applyComponentHook` nesse ponto seria um bom PR para o Mapas.
 

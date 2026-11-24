@@ -1942,7 +1942,6 @@ class Plugin extends \MapasCulturais\Plugin
                     $received[] = [
                         'id' => $counter_appeal->id,
                         'authorNumber' => Plugin::meta($counter_appeal, 'counterAppealAuthorNumber'),
-                        'agentName' => $counter_appeal->owner?->name,
                         'sentTimestamp' => $counter_appeal->sentTimestamp?->format('Y-m-d H:i:s'),
                         'responses' => $this->serializePublicResponses($counter, $counter_appeal),
                     ];
@@ -1951,8 +1950,8 @@ class Plugin extends \MapasCulturais\Plugin
 
             $data['appeals'][] = [
                 'id' => $appeal->id,
+                // o nome do proponente não é enviado aos candidatos: só o número da inscrição
                 'number' => $appeal->number,
-                'agentName' => $appeal->owner?->name,
                 'sentTimestamp' => $appeal->sentTimestamp?->format('Y-m-d H:i:s'),
                 'isMine' => $is_mine,
                 'fields' => $public_fields ? $this->getRegistrationFieldValues($appeal, $public_fields, $counter) : [],

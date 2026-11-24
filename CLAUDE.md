@@ -15,6 +15,7 @@ Instalação: este repositório inteiro vira a pasta `src/plugins/Contrarrazoes`
 - **Autor não contesta o próprio recurso.**
 - **Trava do julgamento:** a comissão não finaliza a avaliação e ninguém defere/indefere o recurso antes do fim do prazo de contrarrazões. Sem prazo definido, o julgamento fica travado.
 - **Publicidade:** o gestor escolhe quais campos do formulário de recurso ficam visíveis. Tipos com dados pessoais nunca são publicáveis (LGPD); veja `PUBLIC_FIELD_TYPES`.
+- **Anonimato entre candidatos (1.2.0):** o **nome** de outro candidato (autor do recurso ou da contrarrazão) **nunca** vai para os dados das telas de candidato (`buildPublicPhaseData`, faixa da contrarrazão). Só o número da inscrição. Gestores e avaliadores veem os nomes.
 - **Resposta à contrarrazão (1.2.0):** quem responde é o **avaliador designado para o recurso** (`canUser('evaluateOnTime')`), depois do fim do prazo de contrarrazões, até finalizar a própria avaliação ou até a publicação do resultado. A resposta é **obrigatória** (`requireCounterAppealResponse`): sem ela não se finaliza a avaliação, não se decide pelo chat, não se muda o status do recurso, não se aplica em lote e não se publica o resultado. A classificação é configurável por fase (padrão *Acolhida / Parcialmente acolhida / Não acolhida*, ou só texto). Os candidatos veem a resposta **só depois da publicação do resultado da etapa de recurso**: o autor da contrarrazão e o autor do recurso contestado. O nome do avaliador não aparece para os candidatos.
 - **Notificar o autor do recurso NÃO foi pedido.** O plugin não envia e-mails.
 
@@ -67,7 +68,7 @@ Os testes só rodam em DESENVOLVIMENTO, com o provedor de login `Fake` habilitad
    - Rode as etapas `appeals <id>` e `committee <id>`.
 2. Monte `tests/scenario.json` (modelo em `tests/scenario.example.json`). No avaliador, a relação da comissão precisa de `has_control = true` e a inscrição precisa ter `valuers` preenchido.
 3. Tire um snapshot do banco (`pg_dump -Fc`) para restaurar entre execuções.
-4. Rode `python3 tests/api_test.py tests/scenario.json`. O esperado é 70/70.
+4. Rode `python3 tests/api_test.py tests/scenario.json`. O esperado é 72/72.
 5. Rode `python3 tests/e2e_test.py tests/scenario.json /tmp/capturas` (Playwright + Chrome).
 6. Para usuários de teste com perfil incompleto, use `'app.redirect_profile_validate' => false` na configuração local, senão eles são redirecionados para a edição do perfil.
 

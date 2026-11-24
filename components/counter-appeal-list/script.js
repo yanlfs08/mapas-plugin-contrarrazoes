@@ -49,8 +49,7 @@ app.component('counter-appeal-list', {
                 return phase.appeals;
             }
             return phase.appeals.filter((appeal) => {
-                return String(appeal.number).toLowerCase().includes(term)
-                    || String(appeal.agentName || '').toLowerCase().includes(term);
+                return String(appeal.number).toLowerCase().includes(term);
             });
         },
 

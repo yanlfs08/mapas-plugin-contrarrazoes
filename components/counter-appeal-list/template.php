@@ -42,7 +42,7 @@ $this->import('
                 </mc-alert>
 
                 <div v-if="phase.appeals.length > 5" class="field counter-appeal-list__filter">
-                    <input type="search" v-model="filters[phase.counterId]" placeholder="<?= i::esc_attr__('Buscar por número da inscrição ou nome do proponente') ?>">
+                    <input type="search" v-model="filters[phase.counterId]" placeholder="<?= i::esc_attr__('Buscar pelo número da inscrição') ?>">
                 </div>
 
                 <p v-if="!phase.appeals.length"><?= i::__('Nenhum recurso foi apresentado nesta fase.') ?></p>
@@ -51,7 +51,7 @@ $this->import('
                     <header class="counter-appeal-list__appeal-header">
                         <div>
                             <h4 class="bold"><?= i::__('Recurso da inscrição') ?> {{ appeal.number }}</h4>
-                            <p class="counter-appeal-list__muted">{{ appeal.agentName }} · <?= i::__('enviado em') ?> {{ formatDate(appeal.sentTimestamp) }}</p>
+                            <p class="counter-appeal-list__muted"><?= i::__('Enviado em') ?> {{ formatDate(appeal.sentTimestamp) }}</p>
                         </div>
                         <span v-if="appeal.isMine" class="counter-appeal-list__badge"><?= i::__('Seu recurso') ?></span>
                     </header>
@@ -86,7 +86,7 @@ $this->import('
                         <h5 class="bold"><?= i::__('Contrarrazões ao seu recurso e respostas da comissão') ?></h5>
                         <div v-for="received in appeal.receivedCounterAppeals" :key="received.id" class="counter-appeal-list__response-item">
                             <p class="counter-appeal-list__muted">
-                                <?= i::__('Contrarrazão de') ?> {{ received.agentName }} (<?= i::__('inscrição') ?> {{ received.authorNumber }})
+                                <?= i::__('Contrarrazão da inscrição') ?> {{ received.authorNumber }}
                             </p>
                             <template v-if="received.responses.length">
                                 <div v-for="(response, index) in received.responses" :key="index">
