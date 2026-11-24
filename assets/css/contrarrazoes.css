@@ -45,3 +45,31 @@
 /* mc-container é uma grade de duas colunas (conteúdo + barra lateral): no modal, a lista ocupa tudo */
 .counter-appeal-timeline__modal .counter-appeal-list.container { display: block; width: 100%; max-width: none; padding: 0; }
 .counter-appeal-timeline__modal .counter-appeal-list main { padding: 0; }
+
+/* resposta às contrarrazões (1.2.0) */
+.counter-appeal-evaluation__progress { margin: 0; }
+.counter-appeal-evaluation__badge { display: inline-block; margin-left: .5rem; padding: .1rem .6rem; border-radius: 1rem; font-size: .8em; background: var(--mc-gray-100, #eee); }
+.counter-appeal-evaluation__badge--done { background: var(--mc-success-300, #cfe9d2); }
+.counter-appeal-evaluation__badge--pending { background: var(--mc-warning-300, #fbe3b5); }
+.counter-appeal-evaluation__response { display: flex; flex-direction: column; gap: .5rem; margin-top: .5rem; padding: .75rem 1rem; border-radius: 6px; background: var(--mc-gray-100, #f5f5f5); }
+.counter-appeal-evaluation__response p { margin: 0; }
+.counter-appeal-evaluation__form { display: flex; flex-direction: column; gap: .75rem; }
+.counter-appeal-evaluation__form textarea { width: 100%; }
+.counter-appeal-evaluation__options { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; }
+.counter-appeal-evaluation__option { display: inline-flex; align-items: center; gap: .35rem; cursor: pointer; }
+.counter-appeal-evaluation__actions { display: flex; gap: .5rem; align-items: center; }
+.counter-appeal-evaluation__answer { display: flex; flex-direction: column; gap: .35rem; align-items: flex-start; }
+
+.counter-appeal-config__results { display: flex; flex-direction: column; gap: .5rem; align-items: flex-start; }
+.counter-appeal-config__result { display: flex; gap: .5rem; align-items: center; }
+.counter-appeal-config__result input { min-width: 260px; }
+.counter-appeal-config__response p { margin: .25rem 0; }
+
+.counter-appeal-list__response { display: flex; flex-direction: column; gap: .5rem; padding: .75rem 1rem; border-radius: 6px; background: var(--mc-gray-100, #f5f5f5); }
+.counter-appeal-list__response p { margin: 0; }
+.counter-appeal-list__response-item { display: flex; flex-direction: column; gap: .25rem; }
+.counter-appeal-list__response-item + .counter-appeal-list__response-item { border-top: 1px solid var(--mc-gray-300, #ddd); padding-top: .5rem; }
+.counter-appeal-timeline__summary--info { font-weight: 600; }
+
+.counter-appeal-banner__response { flex-basis: 100%; display: flex; flex-direction: column; gap: .25rem; padding-top: .5rem; border-top: 1px solid rgba(0,0,0,.1); }
+.counter-appeal-banner__response p { margin: 0; white-space: pre-wrap; word-break: break-word; }

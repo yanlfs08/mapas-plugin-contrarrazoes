@@ -37,10 +37,32 @@ app.component('counter-appeal-config', {
                 processing: false,
                 saving: false,
                 counterEntity: counter ? this.toEntity(counter) : null,
-                form: {
-                    counterAppealPublicFields: [...(counter?.counterAppealPublicFields || [])],
-                },
+                form: this.buildForm(counter),
             };
+        },
+
+        buildForm(counter) {
+            const results = counter?.counterAppealResponseResults || [];
+            return {
+                counterAppealPublicFields: [...(counter?.counterAppealPublicFields || [])],
+                counterAppealResponseClassify: results.length > 0 || !counter,
+                counterAppealResponseResults: results.length ? [...results] : [],
+            };
+        },
+
+        // ao ligar a classificação sem opções, começa pelas opções padrão do plugin
+        onClassifyChange(item) {
+            if (item.form.counterAppealResponseClassify && !item.form.counterAppealResponseResults.length) {
+                item.form.counterAppealResponseResults = [...($MAPAS.config.counterAppealDefaultResponseResults || [])];
+            }
+        },
+
+        addResultOption(item) {
+            item.form.counterAppealResponseResults.push('');
+        },
+
+        removeResultOption(item, index) {
+            item.form.counterAppealResponseResults.splice(index, 1);
         },
 
         toEntity(data) {
@@ -58,7 +80,7 @@ app.component('counter-appeal-config', {
             try {
                 const data = await this.appealPhaseEntity(item).invoke('createCounterAppealPhase', {});
                 item.counterEntity = this.toEntity(data);
-                item.form.counterAppealPublicFields = [...(data.counterAppealPublicFields || [])];
+                item.form = this.buildForm(data);
                 this.messages.success(this.text('Fase de contrarrazões criada com sucesso'));
             } catch (error) {
                 this.messages.error(error?.data || error);
@@ -73,12 +95,22 @@ app.component('counter-appeal-config', {
                 counterAppealPublicFields: item.form.counterAppealPublicFields.length ? item.form.counterAppealPublicFields : '',
                 registrationFrom: counter.registrationFrom ? counter.registrationFrom.sql() : '',
                 registrationTo: counter.registrationTo ? counter.registrationTo.sql() : '',
+                counterAppealResponseClassify: item.form.counterAppealResponseClassify,
+                counterAppealResponseResults: item.form.counterAppealResponseResults
+                    .map((option) => String(option || '').trim())
+                    .filter((option) => option),
             };
+
+            if (payload.counterAppealResponseClassify && !payload.counterAppealResponseResults.length) {
+                this.messages.error(this.text('Informe ao menos uma opção'));
+                item.saving = false;
+                return;
+            }
 
             try {
                 const data = await counter.invoke('saveCounterAppealConfig', payload);
                 item.counterEntity = this.toEntity(data);
-                item.form.counterAppealPublicFields = [...(data.counterAppealPublicFields || [])];
+                item.form = this.buildForm(data);
                 this.messages.success(this.text('Configurações salvas'));
             } catch (error) {
                 const data = error?.data;
@@ -96,7 +128,7 @@ app.component('counter-appeal-config', {
                 await item.counterEntity.invoke('deleteCounterAppealPhase', {});
                 item.counterEntity = null;
                 item.counterAppeals = [];
-                item.form.counterAppealPublicFields = [];
+                item.form = this.buildForm(null);
                 this.messages.success(this.text('Fase de contrarrazões excluída'));
             } catch (error) {
                 this.messages.error(error?.data || error);
@@ -105,6 +137,18 @@ app.component('counter-appeal-config', {
 
         sentCount(item) {
             return item.counterAppeals.filter((ca) => ca.status > 0).length;
+        },
+
+        responseLabel(ca) {
+            if (ca.status <= 0) {
+                return '—';
+            }
+            const responses = ca.responses || [];
+            if (!responses.length) {
+                return this.text('Pendente');
+            }
+            const results = responses.map((r) => r.result).filter((r) => r);
+            return results.length ? results.join(' / ') : this.text('Respondida');
         },
 
         statusLabel(status) {

@@ -102,6 +102,33 @@ $this->import('
                         </p>
                     </section>
 
+                    <section class="counter-appeal-config__section">
+                        <h5 class="bold"><?= i::__('Resposta às contrarrazões') ?></h5>
+                        <p class="counter-appeal-config__muted">
+                            <?= i::__('Depois do prazo de contrarrazões, o avaliador do recurso responde a cada contrarrazão na tela de avaliação. A resposta é obrigatória para finalizar o recurso e fica visível para o autor da contrarrazão e para o autor do recurso depois da publicação do resultado da etapa de recurso.') ?>
+                        </p>
+                        <label class="counter-appeal-config__option">
+                            <input type="checkbox" v-model="item.form.counterAppealResponseClassify" @change="onClassifyChange(item)">
+                            <?= i::__('Classificar a contrarrazão na resposta') ?>
+                        </label>
+                        <p v-if="!item.form.counterAppealResponseClassify" class="counter-appeal-config__muted">
+                            <?= i::__('A resposta terá apenas o texto da fundamentação.') ?>
+                        </p>
+                        <div v-else class="counter-appeal-config__results">
+                            <p class="counter-appeal-config__muted"><?= i::__('Opções que o avaliador escolhe ao responder (até 10):') ?></p>
+                            <div v-for="(option, index) in item.form.counterAppealResponseResults" :key="index" class="counter-appeal-config__result">
+                                <input type="text" v-model="item.form.counterAppealResponseResults[index]" maxlength="100">
+                                <button class="button button--text button--sm counter-appeal-config__delete" @click="removeResultOption(item, index)" title="<?= i::esc_attr__('Remover opção') ?>">
+                                    <mc-icon name="trash"></mc-icon>
+                                </button>
+                            </div>
+                            <button v-if="item.form.counterAppealResponseResults.length < 10" class="button button--text button--sm" @click="addResultOption(item)">
+                                <mc-icon name="add"></mc-icon> <?= i::__('Adicionar opção') ?>
+                            </button>
+                            <p class="counter-appeal-config__muted"><?= i::__('Mudar as opções não altera as respostas já registradas.') ?></p>
+                        </div>
+                    </section>
+
                     <div class="counter-appeal-config__actions">
                         <button class="button button--primary" :disabled="item.saving" @click="saveConfig(item)">
                             <?= i::__('Salvar configurações') ?>
@@ -135,6 +162,7 @@ $this->import('
                                         <th><?= i::__('Recurso contestado') ?></th>
                                         <th><?= i::__('Situação') ?></th>
                                         <th><?= i::__('Enviada em') ?></th>
+                                        <th><?= i::__('Resposta') ?></th>
                                         <th></th>
                                     </tr>
                                 </thead>
@@ -145,6 +173,17 @@ $this->import('
                                         <td>{{ ca.targetNumber }} <small class="counter-appeal-config__muted">{{ ca.targetAgentName }}</small></td>
                                         <td>{{ statusLabel(ca.status) }}</td>
                                         <td>{{ formatDate(ca.sentTimestamp) }}</td>
+                                        <td>
+                                            {{ responseLabel(ca) }}
+                                            <details v-if="ca.responses?.length" class="counter-appeal-config__response">
+                                                <summary><?= i::__('ver') ?></summary>
+                                                <div v-for="(response, index) in ca.responses" :key="index">
+                                                    <small class="counter-appeal-config__muted">{{ response.evaluatorName }} · {{ formatDate(response.updated) }}</small>
+                                                    <p v-if="response.result"><strong>{{ response.result }}</strong></p>
+                                                    <p class="counter-appeal-list__value">{{ response.text }}</p>
+                                                </div>
+                                            </details>
+                                        </td>
                                         <td><a :href="ca.singleUrl" target="_blank"><?= i::__('Ver') ?></a></td>
                                     </tr>
                                 </tbody>
