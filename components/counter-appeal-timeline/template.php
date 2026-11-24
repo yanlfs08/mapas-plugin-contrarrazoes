@@ -37,6 +37,10 @@ $this->import('
                     <template v-else>{{ draftCount }} <?= i::__('contrarrazões iniciadas e ainda não enviadas.') ?></template>
                 </p>
 
+                <p v-if="responsesCount" class="counter-appeal-timeline__summary counter-appeal-timeline__summary--info">
+                    <?= i::__('A comissão publicou as respostas às contrarrazões. Veja em "Ver recursos e contrarrazões".') ?>
+                </p>
+
                 <mc-modal ref="modal" title="<?= i::esc_attr__('Recursos e contrarrazões') ?>" classes="counter-appeal-timeline__modal">
                     <counter-appeal-list :counter-id="data.counterId" hide-header></counter-appeal-list>
 

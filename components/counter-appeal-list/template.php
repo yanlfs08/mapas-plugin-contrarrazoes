@@ -68,6 +68,36 @@ $this->import('
                         </template>
                     </dl>
 
+                    <!-- respostas da comissão (depois da publicação do resultado do recurso) -->
+                    <template v-for="mine in appeal.myCounterAppeals" :key="'resp-' + mine.id">
+                        <section v-if="mine.responses?.length" class="counter-appeal-list__response">
+                            <h5 class="bold">
+                                <?= i::__('Resposta da comissão à sua contrarrazão') ?>
+                                <template v-if="phase.authorRegistrations.length > 1"> ({{ mine.authorNumber }})</template>
+                            </h5>
+                            <div v-for="(response, index) in mine.responses" :key="index" class="counter-appeal-list__response-item">
+                                <p v-if="response.result"><strong>{{ response.result }}</strong></p>
+                                <p class="counter-appeal-list__value">{{ response.text }}</p>
+                            </div>
+                        </section>
+                    </template>
+
+                    <section v-if="appeal.isMine && appeal.receivedCounterAppeals?.length" class="counter-appeal-list__response">
+                        <h5 class="bold"><?= i::__('Contrarrazões ao seu recurso e respostas da comissão') ?></h5>
+                        <div v-for="received in appeal.receivedCounterAppeals" :key="received.id" class="counter-appeal-list__response-item">
+                            <p class="counter-appeal-list__muted">
+                                <?= i::__('Contrarrazão de') ?> {{ received.agentName }} (<?= i::__('inscrição') ?> {{ received.authorNumber }})
+                            </p>
+                            <template v-if="received.responses.length">
+                                <div v-for="(response, index) in received.responses" :key="index">
+                                    <p v-if="response.result"><strong>{{ response.result }}</strong></p>
+                                    <p class="counter-appeal-list__value">{{ response.text }}</p>
+                                </div>
+                            </template>
+                            <p v-else class="counter-appeal-list__muted"><?= i::__('Sem resposta registrada.') ?></p>
+                        </div>
+                    </section>
+
                     <footer class="counter-appeal-list__actions">
                         <template v-if="!appeal.isMine">
                             <a v-for="mine in appeal.myCounterAppeals" :key="mine.id" :href="mine.status > 0 ? mine.singleUrl : mine.editUrl"

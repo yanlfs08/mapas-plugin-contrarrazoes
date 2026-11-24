@@ -45,7 +45,8 @@ Desenvolvido para o Mapa Cultural BH (Fundação Municipal de Cultura / PBH).
 - define o prazo (início e término);
 - escolhe **quais campos do recurso ficam visíveis** para os candidatos;
 - configura o formulário da contrarrazão (botão **Configurar formulário**);
-- acompanha as contrarrazões recebidas, numa tabela;
+- define a **classificação da resposta** às contrarrazões (padrão: *Acolhida*, *Parcialmente acolhida*, *Não acolhida*; pode trocar as opções ou deixar a resposta só em texto);
+- acompanha as contrarrazões recebidas e as respostas da comissão, numa tabela;
 - exclui a fase de contrarrazões, se precisar.
 
 ![Acordeão Contrarrazões aberto](docs/capturas/gestor-configuracao.png)
@@ -67,6 +68,15 @@ O formulário da contrarrazão mostra uma faixa no topo com o recurso contestado
 
 **Comissão.** Na tela de avaliação de cada recurso aparece o bloco **Contrarrazões apresentadas a este recurso**, com o conteúdo e os anexos de cada contrarrazão e o aviso da trava do julgamento enquanto o prazo estiver aberto.
 
+Depois do fim do prazo de contrarrazões, o **avaliador do recurso responde a cada contrarrazão** ali mesmo: escolhe a classificação (se a fase tiver) e escreve a fundamentação. Cada contrarrazão mostra o selo *Pendente* ou *Respondida*, e o título mostra quantas já foram respondidas. A resposta pode ser editada até o avaliador finalizar a avaliação do recurso.
+
+**Resposta publicada.** Quando o gestor publica o resultado da etapa de recurso, a resposta aparece para:
+
+- o **autor da contrarrazão**, na faixa da página da contrarrazão e no modal de recursos da linha do tempo;
+- o **autor do recurso**, no modal de recursos da linha do tempo, junto do *Seu recurso* (com o nome e o número da inscrição de quem contestou).
+
+A resposta é assinada como "comissão": o nome do avaliador não aparece para os candidatos.
+
 ## Regras
 
 | Regra | Como funciona |
@@ -76,6 +86,8 @@ O formulário da contrarrazão mostra uma faixa no topo com o recurso contestado
 | Próprio recurso | O autor não contesta o próprio recurso. Os recursos de qualquer inscrição do mesmo usuário aparecem como *Seu recurso*. |
 | Prazo | Uma contrarrazão só pode ser iniciada dentro do prazo. A lista de recursos aparece a partir do início do prazo. Contrarrazão já iniciada continua acessível depois do prazo, para consulta. |
 | Trava do julgamento | Enquanto o prazo de contrarrazões não terminar, a comissão não finaliza nem envia a avaliação do recurso, e ninguém defere ou indefere o recurso, nem pela mudança de status nem pelo chat da avaliação contínua. Sem prazo definido, o julgamento continua travado. Rascunhos de parecer são permitidos. |
+| Resposta às contrarrazões | Só o **avaliador designado para o recurso** responde, depois do fim do prazo de contrarrazões. A resposta é **obrigatória**: o avaliador não finaliza a avaliação, ninguém defere ou indefere o recurso (status, chat ou aplicação em lote) e o resultado da etapa de recurso não é publicado enquanto houver contrarrazão enviada sem resposta. Com mais de um avaliador por recurso, cada um responde dentro da própria avaliação. A resposta fica travada depois que o avaliador finaliza a avaliação ou que o resultado é publicado. |
+| Publicidade da resposta | Os candidatos só veem a resposta depois da **publicação do resultado da etapa de recurso**: o autor da contrarrazão e o autor do recurso contestado. Os demais inscritos não veem. |
 | LGPD | Campos de CPF, CNPJ, e-mail, telefone, endereço, dados bancários, pessoas, agentes e espaços **nunca** podem ser publicados. O número da inscrição e o nome do proponente são sempre exibidos. |
 | Visibilidade | Só quem pode apresentar contrarrazão (e os gestores) vê o conteúdo dos recursos e baixa os anexos públicos. A página pública do edital não mostra a lista. |
 
@@ -236,6 +248,15 @@ Para mudar o comportamento padrão, informe `config` na ativação do plugin:
 
             // título do campo criado automaticamente no formulário de contrarrazões
             'defaultFieldTitle' => 'Fundamentação da contrarrazão',
+
+            // a resposta às contrarrazões é obrigatória para finalizar o recurso (padrão: true)
+            'requireCounterAppealResponse' => true,
+
+            // classificação padrão das fases novas (o gestor pode trocar em cada fase)
+            'defaultResponseResults' => ['Acolhida', 'Parcialmente acolhida', 'Não acolhida'],
+
+            // tamanho máximo do texto da resposta
+            'responseMaxLength' => 20000,
         ],
     ],
 ],
@@ -246,6 +267,9 @@ Para mudar o comportamento padrão, informe `config` na ativação do plugin:
 | `lockAppealJudgement` | `true` | Com `false`, a comissão pode julgar os recursos mesmo com o prazo de contrarrazões aberto. |
 | `publicFieldTypes` | lista acima | Tipos de campo do formulário de recurso que aparecem como opção de publicação. Não acrescente tipos com dados pessoais. |
 | `defaultFieldTitle` | *Fundamentação da contrarrazão* | Título do campo de texto obrigatório criado com a fase. |
+| `requireCounterAppealResponse` | `true` | Com `false`, a resposta continua disponível, mas deixa de ser exigida para finalizar o recurso. |
+| `defaultResponseResults` | *Acolhida*, *Parcialmente acolhida*, *Não acolhida* | Opções de classificação usadas enquanto o gestor não personalizar a fase. |
+| `responseMaxLength` | `20000` | Número máximo de caracteres da fundamentação da resposta. |
 
 ### Atualizando o plugin
 
@@ -274,9 +298,10 @@ Depois repita o passo de reiniciar. Na **instalação direta**, recompile os ass
 3. Defina o **prazo** (de preferência começando depois do fim do prazo de recurso e terminando antes da resposta do recurso) e marque os **campos do recurso visíveis**. Clique em **Salvar configurações**.
 4. Se quiser, ajuste o formulário em **Configurar formulário**. O plugin já cria um campo obrigatório de texto, e você pode acrescentar anexos e outros campos.
 5. **Divulgue** a abertura do prazo. Os candidatos acessam a própria inscrição (*Minhas inscrições*) e usam o bloco *[Contrarrazões]* na linha do tempo.
-6. Quando o prazo terminar, a comissão julga os recursos, já com as contrarrazões na tela de avaliação, e o gestor publica o resultado como de costume.
+6. Quando o prazo terminar, o avaliador de cada recurso **responde às contrarrazões** na tela de avaliação e só então finaliza o julgamento do recurso.
+7. O gestor publica o resultado da etapa de recurso como de costume. A partir daí, os autores das contrarrazões e dos recursos contestados veem as respostas.
 
-Sugestão de cronograma: resultado preliminar → prazo de recurso → prazo de contrarrazões → julgamento dos recursos → resultado final.
+Sugestão de cronograma: resultado preliminar → prazo de recurso → prazo de contrarrazões → julgamento dos recursos e resposta às contrarrazões → resultado final.
 
 ## Modelo de dados
 
@@ -286,6 +311,9 @@ O plugin não cria tabelas. Tudo fica em entidades nativas do Mapas:
 |---|---|
 | Fase de contrarrazões | Uma `Opportunity` **oculta de primeiro nível** (sem `parent`, status `-1`, fora das listagens), com os metadados `isCounterAppealPhase`, `counterAppealOf` e `counterAppealPublicFields`. A fase de recurso guarda o vínculo em `counterAppealPhase`. |
 | Contrarrazão | Uma `Registration` nessa oportunidade, com os metadados `counterAppealTarget` (id da inscrição de recurso contestada) e `counterAppealAuthorNumber` (número da inscrição autora no edital). |
+| Resposta à contrarrazão | No metadado **privado** `counterAppealResponses` da fase de contrarrazões, no formato `{id da contrarrazão: {id do avaliador: {result, text, created, updated}}}`. As opções de classificação ficam em `counterAppealResponseResults`. |
+
+Por que a resposta fica **na fase**, e não na contrarrazão: o dono de uma inscrição lê todos os metadados privados dela (inclusive pela API). Gravada na contrarrazão, a resposta chegaria ao candidato antes da publicação. Na fase oculta, só os gestores leem o metadado, e o plugin entrega a resposta aos candidatos apenas depois da publicação. A gravação é feita sob trava (`App::lock`), relendo o valor do banco, para que dois avaliadores respondendo ao mesmo tempo não se sobrescrevam.
 
 Por que **primeiro nível**: a página da inscrição (`registration/single.php`) usa `$entity->firstPhase`. Se a fase de contrarrazões fosse filha da fase de recurso, a página da contrarrazão quebraria.
 
@@ -339,6 +367,8 @@ Registrados em `Plugin::register()`.
 | Opportunity | `counterAppealOf` | integer | Na fase de contrarrazões: id da fase de recurso a que ela pertence. |
 | Opportunity | `counterAppealPhase` | integer | Na fase de recurso: id da fase de contrarrazões ligada a ela. |
 | Opportunity | `counterAppealPublicFields` | json | Nomes dos campos do recurso que os candidatos podem ler (`field_N` e grupos de anexo `rfc_N`). |
+| Opportunity | `counterAppealResponseResults` | json | Na fase de contrarrazões: opções de classificação da resposta. `null` = padrão do plugin; `[]` = resposta só em texto. |
+| Opportunity | `counterAppealResponses` | json (privado) | Na fase de contrarrazões: respostas dos avaliadores, por contrarrazão e por avaliador. Só é gravado pelo endpoint `saveCounterAppealResponse`. |
 | Opportunity | `counterAppealEligibility` | select | **Obsoleto desde a 1.1.0.** Continua registrado para não quebrar fases antigas, mas é ignorado: a regra é sempre a mesma etapa do recurso. |
 | Registration | `counterAppealTarget` | integer | Na contrarrazão: id da inscrição de recurso contestada. |
 | Registration | `counterAppealAuthorNumber` | string | Na contrarrazão: número da inscrição autora no edital (permite uma contrarrazão por recurso **por inscrição**). |
@@ -350,9 +380,10 @@ Todos são ações nos controladores existentes do Mapas (hooks `POST(...)` e `G
 | Endpoint | Quem pode | O que faz |
 |---|---|---|
 | `POST /opportunity/createCounterAppealPhase/{id da fase de recurso}` | gestor (`@control` na fase de recurso) | Cria a fase de contrarrazões com o formulário padrão. Se já existir, devolve a existente. Resposta: a fase serializada. |
-| `POST /opportunity/saveCounterAppealConfig/{id da fase de contrarrazões}` | gestor | Salva `registrationFrom`, `registrationTo` e `counterAppealPublicFields`. Valida as datas (o término não pode ser anterior ao início) e descarta campos que não podem ser publicados. Ignora `counterAppealEligibility`. Limpa o cache de permissões. |
+| `POST /opportunity/saveCounterAppealConfig/{id da fase de contrarrazões}` | gestor | Salva `registrationFrom`, `registrationTo`, `counterAppealPublicFields` e a classificação da resposta (`counterAppealResponseClassify` e `counterAppealResponseResults`; ligada sem opções responde 400). Valida as datas (o término não pode ser anterior ao início) e descarta campos que não podem ser publicados. Ignora `counterAppealEligibility`. Limpa o cache de permissões. |
 | `POST /opportunity/deleteCounterAppealPhase/{id}` | gestor | Desfaz o vínculo com a fase de recurso e exclui definitivamente a fase e as contrarrazões. |
 | `GET /opportunity/counterAppealFile/{id da fase}/file:{id do arquivo}` | gestor ou inscrito na etapa | Baixa um anexo de recurso marcado como público, depois do início do prazo. Qualquer outro caso responde 403. |
+| `POST /registration/saveCounterAppealResponse/{id da contrarrazão}` | avaliador do recurso contestado | Dados: `result` (uma das opções da fase, quando houver classificação) e `text`. Só depois do fim do prazo de contrarrazões, antes de o avaliador finalizar a avaliação e antes da publicação do resultado. Resposta: a resposta gravada e quantas contrarrazões ainda estão pendentes para esse avaliador. |
 | `POST /opportunity/createCounterAppealRegistration/{id da fase}` | inscrito na etapa | Dados: `appeal_registration_id` e `author_registration_id`. Valida as regras, devolve a contrarrazão existente daquela inscrição para aquele recurso ou, dentro do prazo, cria uma nova (rascunho). |
 
 ### Pontos de encaixe nas telas
@@ -366,7 +397,7 @@ Registrados em `Plugin::initTemplateHooks()` e em `_init()`.
 | `template(registration.<<view\|single>>.single-tab):begin` | Na página da inscrição, só para o dono, monta `$MAPAS.config.counterAppealList` com os dados das fases de contrarrazões para **essa** inscrição. Não imprime nada. |
 | `component(opportunity-phases-timeline).item:end` | Coloca `<counter-appeal-timeline>` no fim de cada item da linha do tempo. O componente só se mostra no item da fase avaliada que recebeu recurso. Mesmo padrão do módulo nativo `OpportunityExecution`. |
 | `template(registration.<<view\|edit\|single>>.main-header):after` | No formulário e na ficha de uma contrarrazão, mostra a faixa `registration-banner.php` com o recurso contestado, o prazo e o link de volta para a lista. |
-| `template(registration.evaluation.registration-appealPhase-evaluation-view):after` | Na avaliação do recurso, monta `$MAPAS.config.counterAppealEvaluation` (contrarrazões enviadas, prazo e trava) e mostra `counter-appeal-evaluation`. |
+| `template(registration.evaluation.registration-appealPhase-evaluation-view):after` | Na avaliação do recurso, monta `$MAPAS.config.counterAppealEvaluation` (contrarrazões enviadas, prazo, trava, respostas do avaliador da avaliação aberta, opções de classificação e se ele pode responder) e mostra `counter-appeal-evaluation`. Quando o gestor abre a avaliação de outro avaliador (`?user=`), as respostas aparecem só para leitura. |
 | `GET(opportunity.<<single\|edit>>):before` | A fase de contrarrazões não tem página própria. Quem abre o endereço dela vai para a *Configuração de fases* (gestor), para a linha do tempo da inscrição com a lista aberta (candidato na etapa) ou para a página do edital (demais). |
 | `app.init:after` | Carrega `assets/css/contrarrazoes.css`. |
 
@@ -383,7 +414,11 @@ Registrados em `initPermissionHooks()`, `initJudgementLockHooks()` e `_init()`.
 | `POST(registration.<<saveEvaluation\|saveEvaluationAndChangeStatus\|sendEvaluation>>):before` | Trava: bloqueia finalizar ou enviar a avaliação do recurso dentro do prazo. Rascunhos passam. |
 | `entity(RegistrationEvaluation).save:before` | Trava: proteção extra para qualquer outro caminho que grave uma avaliação finalizada. Libera a trava de gravação do Mapas antes de recusar. |
 | `entity(ChatMessage).insert:before` | Trava: impede decidir o recurso pelo chat da avaliação contínua. |
-| `entity(Registration).save:before` | Trava: impede mudar o status do recurso (deferir ou indeferir) dentro do prazo. O envio do recurso pelo candidato (rascunho → enviado) continua permitido. |
+| `entity(Registration).save:before` | Trava: impede mudar o status do recurso (deferir ou indeferir) dentro do prazo. O envio do recurso pelo candidato (rascunho → enviado) continua permitido. Também impede deferir, indeferir, invalidar ou pôr em suplência um recurso com contrarrazão enviada sem resposta. |
+| `POST(registration.<<saveEvaluation\|...>>):before`, `entity(RegistrationEvaluation).save:before`, `entity(ChatMessage).insert:before` | Resposta obrigatória: além da trava, recusam a finalização (ou a decisão pelo chat) enquanto o avaliador não responder a todas as contrarrazões enviadas ao recurso. |
+| `POST(opportunity.applyEvaluationsContinuous):before` | Antes da aplicação em lote dos resultados da avaliação contínua, recusa com a lista dos recursos travados ou com contrarrazão sem resposta. Assim o lote não é aplicado pela metade. |
+| `ALL(opportunity.publishRegistrations):before` | Recusa a publicação do resultado da etapa de recurso durante o prazo de contrarrazões ou com contrarrazão sem resposta. |
+| `PATCH(opportunity.single):before` e `PUT(opportunity.single):before` | Recusa gravar `counterAppealResponses` pela API comum da oportunidade. |
 | `entity(Opportunity).destroy:before` | Ao excluir a fase de recurso, agenda a exclusão da fase de contrarrazões para o fim da requisição. |
 
 As regras que dependem de data (prazo e trava) **não** ficam em hooks `can(...)`, porque o Mapas guarda o resultado desses hooks em cache por até um dia.
@@ -460,8 +495,8 @@ As regras que dependem de data (prazo e trava) **não** ficam em hooks `can(...)
 |---|---|---|---|
 | `counter-appeal-config` | Acordeão *Contrarrazões* na *Etapa de recurso* (gestor) | `$MAPAS.config.counterAppealConfig`; prop `appeal-phase-id` | Cria a fase, edita o prazo e os campos públicos (`saveCounterAppealConfig`), abre o editor de formulário, exclui a fase e lista as contrarrazões recebidas. Se a fase de recurso foi criada depois do carregamento da página, começa vazio, só com o botão de adicionar. |
 | `counter-appeal-timeline` | Linha do tempo da inscrição, no item da fase avaliada (candidato) | `$MAPAS.config.counterAppealList`; prop `phase` (item da linha do tempo) | Mostra o bloco *[Contrarrazões]* só quando a inscrição pode contestar. Resume recursos e contrarrazões e abre o modal. Com `?contrarrazoes={id}` na URL, abre o modal sozinho. |
-| `counter-appeal-list` | Dentro do modal | `$MAPAS.config.counterAppealList`; props `counter-id` e `hide-header` | Lista os recursos com os campos públicos e os anexos, oferece busca por número ou nome (a partir de 6 recursos), cria a contrarrazão (`createCounterAppealRegistration`) e leva ao formulário. |
-| `counter-appeal-evaluation` | Tela de avaliação do recurso (comissão) | `$MAPAS.config.counterAppealEvaluation` | Mostra as contrarrazões enviadas, o prazo e o aviso da trava. |
+| `counter-appeal-list` | Dentro do modal | `$MAPAS.config.counterAppealList`; props `counter-id` e `hide-header` | Lista os recursos com os campos públicos e os anexos, oferece busca por número ou nome (a partir de 6 recursos), cria a contrarrazão (`createCounterAppealRegistration`) e leva ao formulário. Depois da publicação do resultado, mostra a resposta da comissão às contrarrazões da inscrição e, no *Seu recurso*, as respostas às contrarrazões recebidas. |
+| `counter-appeal-evaluation` | Tela de avaliação do recurso (comissão) | `$MAPAS.config.counterAppealEvaluation` | Mostra as contrarrazões enviadas, o prazo e o aviso da trava. Para cada contrarrazão, mostra o formulário de resposta (classificação e fundamentação, `saveCounterAppealResponse`), o selo *Pendente*/*Respondida* e a resposta registrada, com o botão de editar. |
 
 Os textos de interface ficam em `i::__()` no PHP e em `texts.php` com `Utils.getTexts()` no JavaScript, como no restante do Mapas.
 
@@ -512,7 +547,7 @@ php src/plugins/Contrarrazoes/tests/seed-scenario.php committee <id da fase de r
 
 # 3. testes
 pip install requests playwright
-MAPAS_URL=http://localhost:8080 python3 tests/api_test.py tests/scenario.json   # 43 verificações de API e regras
+MAPAS_URL=http://localhost:8080 python3 tests/api_test.py tests/scenario.json   # 70 verificações de API e regras
 MAPAS_URL=http://localhost:8080 python3 tests/e2e_test.py tests/scenario.json /tmp/capturas  # fluxo completo no navegador
 ```
 
@@ -523,7 +558,9 @@ Usuários de teste com perfil incompleto são redirecionados para a edição do 
 ## Limitações conhecidas
 
 - O plugin **não envia e-mails** de abertura do prazo nem de contrarrazão recebida. A divulgação é feita pelos canais do edital.
-- As contrarrazões em si não passam por avaliação no plugin. Elas servem de subsídio ao julgamento do recurso. O gestor pode abrir a inscrição de contrarrazão como qualquer inscrição.
+- A resposta à contrarrazão não é uma avaliação do Mapas (não aparece nos relatórios de avaliação). Ela fica na tabela do acordeão *Contrarrazões* e nas telas descritas acima.
+- A publicação **automática** do resultado da etapa de recurso (data agendada) não passa pelo controlador e, por isso, não é bloqueada pelo plugin. Como deferir e indeferir já exigem as respostas, isso só aconteceria com recursos ainda sem decisão.
+- O autor do recurso vê a resposta e quem contestou, mas não o conteúdo da contrarrazão.
 - O formulário de contrarrazão não tem ponto de encaixe para mostrar o conteúdo do recurso. Por isso o plugin usa uma faixa no topo da página, com o link para a lista de recursos.
 - O acordeão do gestor é inserido no template do componente nativo de recurso, porque o núcleo não oferece ponto de encaixe entre *Recurso* e *Resposta do recurso*. Um `applyComponentHook` nesse ponto seria um bom PR para o Mapas.
 

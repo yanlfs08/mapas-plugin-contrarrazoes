@@ -15,6 +15,7 @@ Instalação: este repositório inteiro vira a pasta `src/plugins/Contrarrazoes`
 - **Autor não contesta o próprio recurso.**
 - **Trava do julgamento:** a comissão não finaliza a avaliação e ninguém defere/indefere o recurso antes do fim do prazo de contrarrazões. Sem prazo definido, o julgamento fica travado.
 - **Publicidade:** o gestor escolhe quais campos do formulário de recurso ficam visíveis. Tipos com dados pessoais nunca são publicáveis (LGPD); veja `PUBLIC_FIELD_TYPES`.
+- **Resposta à contrarrazão (1.2.0):** quem responde é o **avaliador designado para o recurso** (`canUser('evaluateOnTime')`), depois do fim do prazo de contrarrazões, até finalizar a própria avaliação ou até a publicação do resultado. A resposta é **obrigatória** (`requireCounterAppealResponse`): sem ela não se finaliza a avaliação, não se decide pelo chat, não se muda o status do recurso, não se aplica em lote e não se publica o resultado. A classificação é configurável por fase (padrão *Acolhida / Parcialmente acolhida / Não acolhida*, ou só texto). Os candidatos veem a resposta **só depois da publicação do resultado da etapa de recurso**: o autor da contrarrazão e o autor do recurso contestado. O nome do avaliador não aparece para os candidatos.
 - **Notificar o autor do recurso NÃO foi pedido.** O plugin não envia e-mails.
 
 ## Arquitetura
@@ -25,12 +26,14 @@ Instalação: este repositório inteiro vira a pasta `src/plugins/Contrarrazoes`
   - Por que status -1: `Registration::canUserView/canUserSend` só aceitam oportunidades com status em `[-1, 1, -20]`. O -20 dispara a lógica nativa de recurso, e o 1 aparece nas buscas.
   - O `OpportunityPhases` cria automaticamente uma "Publicação final do resultado" filha. Isso é inofensivo.
 - **Contrarrazão** = `Registration` na fase de contrarrazões, com os metadados `counterAppealTarget` (id do recurso) e `counterAppealAuthorNumber` (número da inscrição do autor).
+- **Resposta** = metadado json **privado** `counterAppealResponses` da **fase** de contrarrazões: `{id da contrarrazão: {id do avaliador: {result, text, created, updated}}}`. Não pode ficar na contrarrazão: o dono da inscrição lê os metadados privados dela, e a resposta só pode chegar a ele depois da publicação. Gravação só por `Plugin::saveResponse()`, sob `App::lock` e relendo o valor do banco (`getAllResponses($counter, true)`). Opções de classificação em `counterAppealResponseResults` (`null` = padrão; `[]` = só texto).
 - **Endpoints** (hooks em controladores existentes; no JS use `entity.invoke(action, data)`):
   - `POST opportunity.createCounterAppealPhase/{id da fase de recurso}`
   - `POST opportunity.saveCounterAppealConfig/{id da fase de contrarrazões}` (datas e campos públicos)
   - `POST opportunity.deleteCounterAppealPhase/{id}`
   - `POST opportunity.createCounterAppealRegistration/{id}` (`appeal_registration_id`, `author_registration_id`)
   - `GET opportunity.counterAppealFile/{id}/file:{fileId}` (download dos anexos públicos do recurso)
+  - `POST registration.saveCounterAppealResponse/{id da contrarrazão}` (`result`, `text`)
 - **Telas:**
   - `template(opportunity.edit.tabs):end` → não imprime aba: monta `jsObject.config.counterAppealConfig` e importa `counter-appeal-config`.
   - `mapas.printJsObject:after` (prioridade 5, antes do `$TEMPLATES` ser impresso) → `Plugin::injectCounterAppealConfig()` insere `<counter-appeal-config :appeal-phase-id="entity.id">` no template `opportunity-appeal-phase-config` do núcleo, logo depois do primeiro `</mc-accordion>` (acordeão "Recurso"), antes de "Resposta do recurso". O componente do núcleo não tem ponto de encaixe ali: **não copie o template do núcleo**. Se a marcação mudar, o acordeão vai para o fim da etapa de recurso e um aviso vai para o log. Candidato a PR upstream: `applyComponentHook` entre os dois acordeões.
@@ -51,7 +54,9 @@ Instalação: este repositório inteiro vira a pasta `src/plugins/Contrarrazoes`
 6. **Excluir a fase de contrarrazões dentro da exclusão da fase de recurso** trava o Doctrine (reprocessa a entidade removida). A exclusão em cascata roda em `register_shutdown_function`, com `em->clear()`.
 7. **`delete()` em Opportunity é soft delete (lixeira).** Para excluir de verdade, use `destroy()`.
 8. **Campos do formulário** (`field_N`) só existem depois de `$opportunity->registerRegistrationMetadata()`. Eles são privados, então a leitura é feita com o controle de acesso desligado, e só dos campos permitidos.
-9. Na edição da oportunidade aparece o aviso Vue `compiler-21` / `Cannot destructure property 'bum'`. Ele **já existe sem o plugin** (é do núcleo) e não deve ser atribuído ao plugin.
+9. **`private` em metadado não esconde nada do dono da entidade** (`getRegisteredMetadata` só filtra quem não tem `viewPrivateData`). Dado que o dono não pode ver ainda (a resposta antes da publicação) não pode ficar em metadado da inscrição dele.
+10. **Resposta obrigatória na `RegistrationEvaluation`:** só na transição para finalizada (status original via UnitOfWork). Uma avaliação já finalizada pode ser regravada (o chat da avaliação contínua faz isso).
+11. Na edição da oportunidade aparece o aviso Vue `compiler-21` / `Cannot destructure property 'bum'`. Ele **já existe sem o plugin** (é do núcleo) e não deve ser atribuído ao plugin.
 
 ## Testes
 
@@ -62,7 +67,7 @@ Os testes só rodam em DESENVOLVIMENTO, com o provedor de login `Fake` habilitad
    - Rode as etapas `appeals <id>` e `committee <id>`.
 2. Monte `tests/scenario.json` (modelo em `tests/scenario.example.json`). No avaliador, a relação da comissão precisa de `has_control = true` e a inscrição precisa ter `valuers` preenchido.
 3. Tire um snapshot do banco (`pg_dump -Fc`) para restaurar entre execuções.
-4. Rode `python3 tests/api_test.py tests/scenario.json`. O esperado é 43/43.
+4. Rode `python3 tests/api_test.py tests/scenario.json`. O esperado é 70/70.
 5. Rode `python3 tests/e2e_test.py tests/scenario.json /tmp/capturas` (Playwright + Chrome).
 6. Para usuários de teste com perfil incompleto, use `'app.redirect_profile_validate' => false` na configuração local, senão eles são redirecionados para a edição do perfil.
 

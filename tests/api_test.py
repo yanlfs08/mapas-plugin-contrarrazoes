@@ -12,6 +12,7 @@ Os testes alteram dados: restaure o banco do cenário antes de rodar de novo.
 """
 import datetime as dt
 import json
+import re
 import sys
 
 from mapas_client import BASE_URL, Mapas
@@ -77,6 +78,21 @@ def main(path):
 
     code, _ = c1.post('opportunity', 'saveCounterAppealConfig', cid, {'registrationTo': when(days=9)})
     check('candidato não altera configuração', code == 403, code)
+
+    # --- classificação da resposta (1.2.0) --------------------------------------------------
+    check('fase nova usa a classificação padrão',
+          counter.get('counterAppealResponseResults') == ['Acolhida', 'Parcialmente acolhida', 'Não acolhida'],
+          counter.get('counterAppealResponseResults'))
+    code, body = gestor.post('opportunity', 'saveCounterAppealConfig', cid, {
+        'counterAppealResponseClassify': True, 'counterAppealResponseResults': ['  ', '']})
+    check('classificação ligada sem opções é rejeitada', code == 400, (code, body))
+    code, body = gestor.post('opportunity', 'saveCounterAppealConfig', cid, {
+        'counterAppealResponseClassify': False})
+    check('gestor desliga a classificação (só texto)', code == 200 and body.get('counterAppealResponseResults') == [], (code, body))
+    code, body = gestor.post('opportunity', 'saveCounterAppealConfig', cid, {
+        'counterAppealResponseClassify': True, 'counterAppealResponseResults': ['Procedente', ' Improcedente ', 'Procedente']})
+    check('gestor personaliza a classificação', code == 200 and body.get('counterAppealResponseResults') == ['Procedente', 'Improcedente'], (code, body))
+    check('respostas não vão para o objeto da fase', 'counterAppealResponses' not in body, list(body)[:5])
 
     # --- linha do tempo da inscrição -----------------------------------------------------------
     page = c1.get(f"/inscricao/{first['c1']}/").text
@@ -167,6 +183,19 @@ def main(path):
                          json={'data': {'status': '10', 'obs': 'Rascunho do parecer'}}, headers={'Accept': 'application/json'})
     check('avaliador salva rascunho dentro do prazo', r.status_code == 200, (r.status_code, r.text[:300]))
 
+    # --- C1 envia a contrarrazão ao recurso de C3 -----------------------------------------------
+    edit_page = c1.get(ca['editUrl'].replace(BASE_URL, '')).text
+    field = re.search(r'field_\d+', edit_page)
+    field = field.group(0) if field else 'field_0'
+    r = c1.s.patch(f"{BASE_URL}/registration/single/{ca['id']}",
+                   json={field: 'O recurso não aponta erro na nota de mérito.'}, headers={'Accept': 'application/json'})
+    code, body = c1.post('registration', 'send', ca['id'])
+    check('C1 envia a contrarrazão', code == 200, (code, str(body)[:300]))
+
+    code, body = avaliador.post('registration', 'saveCounterAppealResponse', ca['id'],
+                                {'result': 'Procedente', 'text': 'Cedo demais'})
+    check('avaliador não responde dentro do prazo de contrarrazões', code == 403, (code, body))
+
     # --- depois do prazo ------------------------------------------------------------------------
     code, body = gestor.post('opportunity', 'saveCounterAppealConfig', cid, {
         'registrationFrom': when(days=-3), 'registrationTo': when(minutes=-1)})
@@ -180,12 +209,72 @@ def main(path):
                          {'appeal_registration_id': appeals['c3'], 'author_registration_id': merit['c2']})
     check('nova contrarrazão após o prazo é bloqueada', code == 403, (code, body))
 
+    # --- resposta às contrarrazões (1.2.0) ------------------------------------------------------
+    r = avaliador.s.post(f"{BASE_URL}/registration/saveEvaluation/{appeals['c3']}/status:evaluated",
+                         json={'data': {'status': '10', 'obs': 'Deferido'}}, headers={'Accept': 'application/json'})
+    check('avaliador não finaliza sem responder às contrarrazões', r.status_code in (401, 403) and 'contrarraz' in r.text,
+          (r.status_code, r.text[:300]))
+
+    code, body = gestor.post('registration', 'setStatusTo', appeals['c3'], {'status': 10})
+    check('gestor não defere recurso com contrarrazão sem resposta', code in (401, 403), (code, body))
+
+    code, body = gestor.post('opportunity', 'publishRegistrations', appeal_phase)
+    check('gestor não publica o resultado com contrarrazão sem resposta', code == 403, (code, str(body)[:300]))
+
+    code, body = c2.post('registration', 'saveCounterAppealResponse', ca['id'], {'result': 'Procedente', 'text': 'x'})
+    check('candidato não responde à contrarrazão', code == 403, (code, body))
+
+    code, body = gestor.post('registration', 'saveCounterAppealResponse', ca['id'], {'result': 'Procedente', 'text': 'x'})
+    check('gestor que não é avaliador do recurso não responde', code == 403, (code, body))
+
+    code, body = avaliador.post('registration', 'saveCounterAppealResponse', ca['id'], {'result': 'Acolhida', 'text': 'x'})
+    check('classificação fora das opções da fase é rejeitada', code == 400, (code, body))
+
+    code, body = avaliador.post('registration', 'saveCounterAppealResponse', ca['id'], {'result': 'Improcedente', 'text': '  '})
+    check('fundamentação é obrigatória', code == 400, (code, body))
+
+    resposta = 'A contrarrazão não afasta o erro material apontado no recurso.'
+    code, body = avaliador.post('registration', 'saveCounterAppealResponse', ca['id'], {'result': 'Improcedente', 'text': resposta})
+    check('avaliador responde à contrarrazão', code == 200 and body.get('pending') == 0, (code, body))
+
+    r = gestor.s.patch(f'{BASE_URL}/opportunity/single/{cid}', json={'counterAppealResponses': {}},
+                       headers={'Accept': 'application/json'})
+    check('respostas não são gravadas pela API da oportunidade', r.status_code == 403, (r.status_code, r.text[:200]))
+
+    page = avaliador.get(f"/registration/evaluation/{appeals['c3']}/").text
+    check('tela de avaliação mostra a resposta ao avaliador', resposta in page)
+
+    page = c1.get(f"/inscricao/{first['c1']}/").text
+    check('autor da contrarrazão não vê a resposta antes da publicação', resposta not in page)
+    page = c1.get(ca['singleUrl'].replace(BASE_URL, '')).text
+    check('ficha da contrarrazão não mostra a resposta antes da publicação', resposta not in page)
+    r = c1.get('/api/opportunity/find', params={'id': f'EQ({cid})', '@select': 'id,counterAppealResponses'})
+    check('API não entrega a resposta ao candidato', resposta not in r.text, r.text[:200])
+    page = c3.get(f"/inscricao/{first['c3']}/").text
+    check('autor do recurso não vê a resposta antes da publicação', resposta not in page)
+
     r = avaliador.s.post(f"{BASE_URL}/registration/saveEvaluation/{appeals['c3']}/status:evaluated",
                          json={'data': {'status': '10', 'obs': 'Deferido'}}, headers={'Accept': 'application/json'})
     check('avaliador finaliza avaliação após o prazo', r.status_code == 200, (r.status_code, r.text[:300]))
 
+    code, body = avaliador.post('registration', 'saveCounterAppealResponse', ca['id'], {'result': 'Procedente', 'text': 'Mudei de ideia'})
+    check('resposta não muda depois de finalizada a avaliação', code == 403, (code, body))
+
     code, body = gestor.post('registration', 'setStatusTo', appeals['c3'], {'status': 10})
     check('gestor defere recurso após o prazo', code == 200, (code, body))
+
+    # --- publicação do resultado do recurso ----------------------------------------------------
+    code, body = gestor.post('opportunity', 'publishRegistrations', appeal_phase)
+    check('gestor publica o resultado da etapa de recurso', code == 200, (code, str(body)[:300]))
+
+    page = c1.get(f"/inscricao/{first['c1']}/").text
+    check('autor da contrarrazão vê a resposta depois da publicação', resposta in page)
+    page = c1.get(ca['singleUrl'].replace(BASE_URL, '')).text
+    check('ficha da contrarrazão mostra a resposta depois da publicação', resposta in page)
+    page = c3.get(f"/inscricao/{first['c3']}/").text
+    check('autor do recurso vê a resposta depois da publicação', resposta in page)
+    page = c2.get(f"/inscricao/{first['c2']}/").text
+    check('quem não participou não vê a resposta', resposta not in page)
 
     # --- exclusão ---------------------------------------------------------------------------------
     code, _ = c1.post('opportunity', 'deleteCounterAppealPhase', cid)

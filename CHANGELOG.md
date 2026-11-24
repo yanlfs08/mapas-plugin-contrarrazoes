@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0 - 2026-11-24
+
+- **Resposta às contrarrazões.** Na tela de avaliação do recurso, o avaliador designado para o recurso responde a cada contrarrazão enviada, depois do fim do prazo de contrarrazões: escolhe a classificação e escreve a fundamentação. Cada contrarrazão mostra o selo *Pendente* ou *Respondida*. A resposta pode ser editada até o avaliador finalizar a avaliação.
+- **Resposta obrigatória.** Sem responder a todas as contrarrazões, o avaliador não finaliza a avaliação nem decide pelo chat. Ninguém defere, indefere, invalida ou põe em suplência o recurso (inclusive pela aplicação em lote da avaliação contínua), e o resultado da etapa de recurso não é publicado. Configuração `requireCounterAppealResponse` (padrão `true`).
+- **Classificação configurável.** O acordeão *Contrarrazões* ganhou a seção *Resposta às contrarrazões*: o gestor mantém o padrão (*Acolhida*, *Parcialmente acolhida*, *Não acolhida*), troca as opções (até 10) ou deixa a resposta só em texto. Configuração `defaultResponseResults`.
+- **Publicidade.** Depois da publicação do resultado da etapa de recurso, a resposta aparece para o autor da contrarrazão (faixa da contrarrazão e modal da linha do tempo) e para o autor do recurso contestado (modal da linha do tempo, no *Seu recurso*). O nome do avaliador não é exibido aos candidatos.
+- O gestor vê as respostas de todos os avaliadores na tabela de contrarrazões recebidas.
+- A aplicação em lote da avaliação contínua e a publicação do resultado da etapa de recurso passam a respeitar também a trava do prazo de contrarrazões, com uma mensagem clara antes de começar.
+- Novo endpoint `POST /registration/saveCounterAppealResponse/{id}` e novos metadados `counterAppealResponses` (privado) e `counterAppealResponseResults` na fase de contrarrazões. Não precisa de db-update.
+- Testes: 70 verificações de API (27 novas).
+
 ## 1.1.0 - 2026-11-18
 
 - A aba pública **Recursos e contrarrazões** da página da oportunidade foi removida. No lugar dela, a linha do tempo da inscrição do candidato (aba *Acompanhamento*) ganhou o bloco **[Contrarrazões]**, na fase que recebeu recurso, logo abaixo do botão **Solicitar recurso** (ou do quadro *[Recurso]*). O bloco mostra o prazo e um resumo, e o botão **Ver recursos e apresentar contrarrazão** abre a lista de recursos num modal.
