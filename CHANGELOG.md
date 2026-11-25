@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.1 - 2026-11-25
+
+- **Destaque do próprio recurso** no modal *Recursos e contrarrazões* da linha do tempo, com o laranja das oportunidades do Mapas (`--mc-secondary-500`):
+  - a lista é dividida em dois blocos com título, quantidade e divisória: *Seu recurso* (em laranja, primeiro) e *Recursos dos demais candidatos* (em verde, a cor padrão do Mapas);
+  - quem não apresentou recurso continua vendo uma lista única, sem títulos;
+  - o card do próprio recurso tem borda e fundo laranja.
+- As contrarrazões recebidas, quando liberadas, ficam em cartões brancos dentro do destaque.
+
 ## 1.4.0 - 2026-11-25
 
 - **Acompanhamento na aba Inscrições e Resultados.** A etapa de recurso dessa aba ganhou o acordeão **Contrarrazões**, entre *Recurso* e *Resposta do recurso* (componente `counter-appeal-registrations`). Ele mostra só o essencial, no formato do *Resumo* do acordeão *Recurso*:

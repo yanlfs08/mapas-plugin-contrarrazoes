@@ -26,7 +26,7 @@ use MapasCulturais\i;
  */
 class Plugin extends \MapasCulturais\Plugin
 {
-    const VERSION = '1.4.0';
+    const VERSION = '1.4.1';
 
     /** Faixa de versões do Mapas Culturais em que o plugin foi testado */
     const TESTED_MAPAS_VERSIONS = '7.8';

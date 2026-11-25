@@ -47,13 +47,27 @@ $this->import('
 
                 <p v-if="!phase.appeals.length"><?= i::__('Nenhum recurso foi apresentado nesta fase.') ?></p>
 
-                <article v-for="appeal in filteredAppeals(phase)" :key="appeal.id" class="counter-appeal-list__appeal">
+                <!-- duas listas com título e divisória: o(s) recurso(s) do próprio inscrito e os demais -->
+                <template v-for="group in appealGroups(phase)" :key="group.key">
+                <div v-if="group.titled" :class="['counter-appeal-list__group-title', 'counter-appeal-list__group-title--' + group.key]">
+                    <h4 class="bold">
+                        <template v-if="group.key === 'mine'">
+                            <template v-if="group.items.length > 1"><?= i::__('Seus recursos') ?></template>
+                            <template v-else><?= i::__('Seu recurso') ?></template>
+                        </template>
+                        <template v-else><?= i::__('Recursos dos demais candidatos') ?></template>
+                        <span class="counter-appeal-list__group-count">({{ group.items.length }})</span>
+                    </h4>
+                    <p v-if="group.key === 'mine' && phase.visibleToAppellant" class="counter-appeal-list__muted"><?= i::__('As contrarrazões que o seu recurso receber aparecem logo abaixo dele.') ?></p>
+                    <p v-if="group.key === 'others' && phase.isOpen" class="counter-appeal-list__muted"><?= i::__('Se algum destes recursos puder prejudicar a sua inscrição, apresente uma contrarrazão.') ?></p>
+                </div>
+                <article v-for="appeal in group.items" :key="appeal.id"
+                         :class="['counter-appeal-list__appeal', {'counter-appeal-list__appeal--mine': appeal.isMine}]">
                     <header class="counter-appeal-list__appeal-header">
                         <div>
                             <h4 class="bold"><?= i::__('Recurso da inscrição') ?> {{ appeal.number }}</h4>
                             <p class="counter-appeal-list__muted"><template v-if="appeal.agentName">{{ appeal.agentName }} · </template><?= i::__('enviado em') ?> {{ formatDate(appeal.sentTimestamp) }}</p>
                         </div>
-                        <span v-if="appeal.isMine" class="counter-appeal-list__badge"><?= i::__('Seu recurso') ?></span>
                     </header>
 
                     <dl v-if="appeal.fields.length" class="counter-appeal-list__fields">
@@ -140,6 +154,7 @@ $this->import('
                         <span v-else class="counter-appeal-list__muted"><?= i::__('O formulário de contrarrazão ainda não foi disponibilizado pela gestão do edital.') ?></span>
                     </footer>
                 </article>
+                </template>
             </template>
         </div>
     </main>

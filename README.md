@@ -4,7 +4,7 @@ Plugin para o [Mapas Culturais](https://github.com/mapasculturais/mapasculturais
 
 Os candidatos que estão na etapa avaliada leem os recursos apresentados pelos colegas e podem contestá-los antes do julgamento. A comissão julga cada recurso já vendo as contrarrazões que ele recebeu, e o resultado da etapa de recurso só pode ser publicado depois do fim do prazo de contrarrazões.
 
-Desenvolvido para o Mapa Cultural BH (Fundação Municipal de Cultura / PBH). Versão atual: **1.4.0** (veja o [CHANGELOG](CHANGELOG.md)).
+Desenvolvido para o Mapa Cultural BH (Fundação Municipal de Cultura / PBH). Versão atual: **1.4.1** (veja o [CHANGELOG](CHANGELOG.md)).
 
 | Gestor configura | Candidato vê na linha do tempo | Candidato lê os recursos | Comissão julga |
 |---|---|---|---|
@@ -150,7 +150,9 @@ O bloco **só aparece** quando:
 - A busca aparece a partir de 6 recursos.
 - Cada recurso mostra o número da inscrição, o nome do proponente (se o gestor permitir), a data de envio, os campos liberados pelo gestor e os anexos para baixar.
 - **Apresentar contrarrazão** cria a contrarrazão (rascunho) e leva ao formulário do Mapas.
-- O recurso do próprio candidato aparece com o selo **Seu recurso** e não pode ser contestado.
+- Quem apresentou recurso vê a lista dividida em dois blocos, cada um com título e divisória: **Seu recurso** (em laranja, a cor das oportunidades no Mapas) e **Recursos dos demais candidatos** (em verde, a cor padrão do Mapas), com a quantidade de cada um. O card do próprio recurso tem borda e fundo laranja e não pode ser contestado pelo próprio autor. Quem não apresentou recurso vê uma lista única, sem títulos.
+
+![Recurso do próprio inscrito destacado em laranja no topo do modal](docs/capturas/candidato-seu-recurso-destacado.png)
 
 ### Preenchendo a contrarrazão
 
@@ -410,7 +412,7 @@ Por isso, toda instalação ou atualização do plugin exige **gerar a imagem de
    docker compose exec mapasculturais ls /var/www/src/plugins
    # deve listar: Contrarrazoes
    docker compose exec mapasculturais grep "VERSION =" /var/www/src/plugins/Contrarrazoes/Plugin.php
-   # const VERSION = '1.4.0';
+   # const VERSION = '1.4.1';
    ```
 
 2. **Metadados registrados.** A API de descrição das oportunidades passa a listar os campos do plugin:
