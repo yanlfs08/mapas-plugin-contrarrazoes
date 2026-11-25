@@ -27,7 +27,6 @@
 
 .counter-appeal-evaluation { display: flex; flex-direction: column; gap: .75rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--mc-gray-300, #ddd); }
 .counter-appeal-evaluation__item { border-left: 3px solid var(--mc-primary-500, #333); padding: .5rem 1rem; display: flex; flex-direction: column; gap: .5rem; }
-.counter-appeal-evaluation__link { margin-left: .5rem; }
 
 @media (max-width: 600px) {
     .counter-appeal-list__fields, .counter-appeal-evaluation__fields { grid-template-columns: 1fr; }

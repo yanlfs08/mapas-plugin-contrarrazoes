@@ -33,9 +33,7 @@ $this->import('
     <article v-for="item in items" :key="item.id" class="counter-appeal-evaluation__item">
         <header>
             <strong>{{ item.agentName }}</strong>
-            <span class="counter-appeal-evaluation__muted"> · <?= i::__('inscrição') ?> {{ item.authorNumber }} · <?= i::__('enviada em') ?> {{ formatDate(item.sentTimestamp) }}</span>
-            <a :href="item.singleUrl" target="_blank" class="counter-appeal-evaluation__link"><?= i::__('abrir') ?> <mc-icon name="external" size="sm"></mc-icon></a>
-        </header>
+            <span class="counter-appeal-evaluation__muted"> · <?= i::__('inscrição') ?> {{ item.authorNumber }} · <?= i::__('enviada em') ?> {{ formatDate(item.sentTimestamp) }}</span>        </header>
         <dl class="counter-appeal-evaluation__fields">
             <template v-for="field in item.fields" :key="field.name">
                 <dt>{{ field.title }}</dt>
