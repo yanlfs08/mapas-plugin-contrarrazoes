@@ -11,6 +11,7 @@
 - A aplicação em lote da avaliação contínua e a publicação do resultado da etapa de recurso passam a respeitar também a trava do prazo de contrarrazões, com uma mensagem clara antes de começar.
 - Novo endpoint `POST /registration/saveCounterAppealResponse/{id}` e novos metadados `counterAppealResponses` (privado) e `counterAppealResponseResults` na fase de contrarrazões. Não precisa de db-update.
 - Testes: 72 verificações de API (29 novas).
+- **Cenário de homologação:** `tests/cenario-homologacao.php` cria, dentro do container, usuários com senha (MultipleLocalAuth) e um concurso completo, com recursos, comissão, fase de contrarrazões e contrarrazões enviadas e em rascunho. O comando `prazo <id> encerrar|abrir` move o prazo de contrarrazões. O roteiro `tests/ROTEIRO-HOMOLOGACAO.md` confere cada mudança da 1.2.0 pelo navegador.
 
 ## 1.1.0 - 2026-11-18
 

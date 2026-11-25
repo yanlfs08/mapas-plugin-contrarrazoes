@@ -553,6 +553,19 @@ MAPAS_URL=http://localhost:8080 python3 tests/e2e_test.py tests/scenario.json /t
 
 Na avaliação, a relação da comissão precisa de `has_control = true` e o recurso precisa ter `valuers` preenchido (a etapa `committee` faz isso). Os dois roteiros alteram o banco: restaure o snapshot antes de rodar de novo.
 
+### Homologação manual (navegador)
+
+Para conferir as telas à mão no servidor de desenvolvimento, com login por e-mail e senha (MultipleLocalAuth):
+
+```bash
+cd /srv/mapasculturaisbh
+docker compose exec mapasculturais php /var/www/src/plugins/Contrarrazoes/tests/cenario-homologacao.php criar
+# depois da parte 1 do roteiro:
+docker compose exec mapasculturais php /var/www/src/plugins/Contrarrazoes/tests/cenario-homologacao.php prazo <id do concurso> encerrar
+```
+
+O script cria uma gestora, um avaliador e cinco candidatos (senha padrão `Contrarrazoes@2026`, ou a da variável `SENHA_TESTE`). Também monta um concurso com resultado publicado, três recursos, comissão de recursos, fase de contrarrazões aberta e contrarrazões enviadas e em rascunho. O passo a passo está em [`tests/ROTEIRO-HOMOLOGACAO.md`](tests/ROTEIRO-HOMOLOGACAO.md).
+
 Usuários de teste com perfil incompleto são redirecionados para a edição do perfil. Em desenvolvimento, use `'app.redirect_profile_validate' => false` ou complete os perfis.
 
 ## Limitações conhecidas

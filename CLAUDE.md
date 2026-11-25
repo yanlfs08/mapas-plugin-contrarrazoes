@@ -72,6 +72,8 @@ Os testes só rodam em DESENVOLVIMENTO, com o provedor de login `Fake` habilitad
 5. Rode `python3 tests/e2e_test.py tests/scenario.json /tmp/capturas` (Playwright + Chrome).
 6. Para usuários de teste com perfil incompleto, use `'app.redirect_profile_validate' => false` na configuração local, senão eles são redirecionados para a edição do perfil.
 
+**Homologação manual** (servidor de desenvolvimento, com login por e-mail e senha): `docker compose exec mapasculturais php /var/www/src/plugins/Contrarrazoes/tests/cenario-homologacao.php criar` monta usuários e um concurso completo. Depois, siga `tests/ROTEIRO-HOMOLOGACAO.md`. O comando `prazo <id do concurso> encerrar|abrir` move o prazo de contrarrazões. O script grava o cache de permissões direto, sem a fila do pcache, que quebra no servidor BH por causa de um registro órfão.
+
 Datas: o front envia a hora local (`McDate.sql()`), igual ao núcleo. O navegador e o servidor devem estar no mesmo fuso (America/Sao_Paulo).
 
 ## Convenções
