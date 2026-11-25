@@ -78,3 +78,18 @@
 .counter-appeal-tracking { display: flex; flex-direction: column; gap: 2rem; }
 .counter-appeal-tracking__status { display: flex; flex-wrap: wrap; gap: .75rem 2rem; padding: 1rem 1.25rem; border: 1px solid var(--mc-gray-300, #ccc); border-radius: 8px; background: var(--mc-white, #fff); }
 .counter-appeal-tracking__section { display: flex; flex-direction: column; gap: .75rem; padding: 1.25rem; border-radius: 8px; background: var(--mc-white, #fff); }
+
+/* 1.4.1: destaque do recurso do próprio inscrito no modal "Recursos e contrarrazões" (laranja do Mapas) */
+.counter-appeal-list__appeal--mine { border: 2px solid var(--mc-secondary-500, #d14526); background: #fdf1ed; box-shadow: 0 2px 10px rgba(209, 69, 38, .18); }
+.counter-appeal-list__appeal--mine .counter-appeal-list__received { border-top-color: var(--mc-secondary-300, #ea9d8c); }
+.counter-appeal-list__appeal--mine .counter-appeal-list__counter { background: #fff; border-left-color: var(--mc-secondary-500, #d14526); }
+
+/* títulos com divisória: "Seu recurso" e "Recursos dos demais candidatos" */
+.counter-appeal-list__group-title { display: flex; flex-direction: column; gap: .2rem; padding-bottom: .5rem; border-bottom: 2px solid var(--mc-gray-300, #ccc); }
+.counter-appeal-list__group-title h4 { margin: 0; }
+.counter-appeal-list__group-title p { margin: 0; }
+.counter-appeal-list__group-title--mine { border-bottom-color: var(--mc-secondary-500, #d14526); }
+.counter-appeal-list__group-title--mine h4 { color: var(--mc-secondary-500, #d14526); }
+.counter-appeal-list__group-title--others { margin-top: 1.25rem; border-bottom-color: var(--mc-primary-500, #117c83); }
+.counter-appeal-list__group-title--others h4 { color: var(--mc-primary-500, #117c83); }
+.counter-appeal-list__group-count { margin-left: .35rem; font-weight: 400; color: var(--mc-gray-500, #666); }

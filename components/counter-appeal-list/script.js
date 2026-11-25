@@ -55,13 +55,29 @@ app.component('counter-appeal-list', {
     methods: {
         filteredAppeals(phase) {
             const term = (this.filters[phase.counterId] || '').trim().toLowerCase();
-            if (!term) {
-                return phase.appeals;
-            }
-            return phase.appeals.filter((appeal) => {
+            const appeals = !term ? phase.appeals : phase.appeals.filter((appeal) => {
                 return String(appeal.number).toLowerCase().includes(term)
                     || String(appeal.agentName || '').toLowerCase().includes(term);
             });
+            // o recurso do próprio inscrito vem primeiro (destacado em laranja); os demais mantêm a ordem
+            return [...appeals.filter((a) => a.isMine), ...appeals.filter((a) => !a.isMine)];
+        },
+
+        // grupos do modal: "Seu recurso" e "Recursos dos demais candidatos". Os títulos e a divisória
+        // só aparecem quando o inscrito tem recurso; sem recurso próprio, a lista segue sem títulos.
+        appealGroups(phase) {
+            const appeals = this.filteredAppeals(phase);
+            const mine = appeals.filter((a) => a.isMine);
+            const others = appeals.filter((a) => !a.isMine);
+            const hasMine = phase.appeals.some((a) => a.isMine);
+            const groups = [];
+            if (mine.length) {
+                groups.push({ key: 'mine', items: mine, titled: true });
+            }
+            if (others.length) {
+                groups.push({ key: 'others', items: others, titled: hasMine });
+            }
+            return groups;
         },
 
         // inscrições do usuário que ainda podem apresentar contrarrazão a este recurso
