@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.2 - 2026-11-25
+
+- Os recursos não disparam mais e-mails automáticos do Mapas.
+  - Antes, o módulo MailNotification enviava ao candidato o e-mail *start_data_collection_phase* sempre que um recurso era aberto.
+  - A nova configuração `disableAppealMails` (padrão `true`) cancela esse e-mail e o de envio, só para as fases de recurso.
+  - Os e-mails das inscrições comuns e das contrarrazões continuam.
+- A tela de avaliação do recurso não tem mais o link **abrir** para a ficha/formulário de cada contrarrazão. O avaliador lê os campos e anexos no próprio bloco, e o endereço da ficha não é mais enviado à página.
+
 ## 1.4.1 - 2026-11-25
 
 - **Destaque do próprio recurso** no modal *Recursos e contrarrazões* da linha do tempo, com o laranja das oportunidades do Mapas (`--mc-secondary-500`):

@@ -26,7 +26,7 @@ use MapasCulturais\i;
  */
 class Plugin extends \MapasCulturais\Plugin
 {
-    const VERSION = '1.4.1';
+    const VERSION = '1.4.2';
 
     /** Faixa de versões do Mapas Culturais em que o plugin foi testado */
     const TESTED_MAPAS_VERSIONS = '7.8';
@@ -53,9 +53,47 @@ class Plugin extends \MapasCulturais\Plugin
             // trava o julgamento dos recursos (e a publicação do resultado da etapa de recurso)
             // até o fim do prazo de contrarrazões
             'lockAppealJudgement' => true,
+
+            // não envia os e-mails automáticos do Mapas (módulo MailNotification) quando o candidato
+            // abre ou envia um recurso. Os e-mails das inscrições e das contrarrazões continuam.
+            'disableAppealMails' => true,
         ];
 
         parent::__construct($config);
+    }
+
+    /* ---------------------------------------------------------------------
+     * E-mails
+     * ------------------------------------------------------------------- */
+
+    /**
+     * Desliga os e-mails automáticos do Mapas para os recursos.
+     *
+     * O módulo MailNotification envia "start_data_collection_phase" quando a inscrição do recurso
+     * é criada e, se ligado para outras fases, "send_registration" no envio. Os dois passam pelos
+     * hooks abaixo, que cancelam o envio pela variável $enable.
+     * Os e-mails do próprio módulo OpportunityAppealPhase já vêm desligados por padrão
+     * (SEND_MAIL_OPPORTUNITY_APPEAL_PHASE=false).
+     */
+    protected function initMailHooks()
+    {
+        if (!$this->config['disableAppealMails']) {
+            return;
+        }
+
+        $app = App::i();
+        $skip_appeal = function ($registration, &$enable) {
+            if ($registration instanceof Registration && $registration->opportunity && $registration->opportunity->isAppealPhase) {
+                $enable = false;
+            }
+        };
+
+        $app->hook('sendMailNotification.registrationStart:beforeEnqueue', function (&$registration, &$template, &$enable) use ($skip_appeal) {
+            $skip_appeal($registration, $enable);
+        });
+        $app->hook('sendMailNotification.registrationSend', function (&$registration, &$template, &$enable) use ($skip_appeal) {
+            $skip_appeal($registration, $enable);
+        });
     }
 
     /* ---------------------------------------------------------------------
@@ -77,6 +115,7 @@ class Plugin extends \MapasCulturais\Plugin
         $this->initEndpoints();
         $this->initJudgementLockHooks();
         $this->initTemplateHooks();
+        $this->initMailHooks();
 
         // a fase de contrarrazões não tem página própria: leva o gestor para a Configuração de fases
         // da oportunidade e o candidato para a linha do tempo da sua inscrição, com a lista aberta
@@ -1408,7 +1447,10 @@ class Plugin extends \MapasCulturais\Plugin
 
             $items = [];
             foreach ($self->getCounterAppeals($counter, $appeal, Registration::STATUS_SENT) as $registration) {
-                $items[] = $self->serializeRegistration($registration) + [
+                // o avaliador lê a contrarrazão aqui mesmo: sem link para a ficha/formulário dela
+                $item = $self->serializeRegistration($registration);
+                unset($item['singleUrl'], $item['editUrl']);
+                $items[] = $item + [
                     'authorNumber' => Plugin::meta($registration, 'counterAppealAuthorNumber'),
                     'fields' => $self->getRegistrationFieldValues($registration),
                 ];
