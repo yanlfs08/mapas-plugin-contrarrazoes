@@ -53,3 +53,28 @@
 .counter-appeal-config__hint { margin: -.25rem 0 .25rem 1.6rem; }
 .counter-appeal-config__autosave span { margin-left: .25rem; font-weight: 600; }
 .counter-appeal-evaluation__visibility { display: flex; gap: .4rem; align-items: flex-start; margin: 0; }
+
+/* 1.4.0: acompanhamento das contrarrazões na aba "Inscrições e Resultados" */
+.counter-appeal-registrations__content { display: flex; flex-direction: column; gap: 1.5rem; }
+.counter-appeal-registrations__summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; }
+.counter-appeal-registrations__summary-grid p { margin: .15rem 0; }
+.counter-appeal-registrations__status { display: flex; flex-direction: column; gap: .5rem; }
+.counter-appeal-registrations__badge--warning { background: var(--mc-warning-300, #ffe2a8); }
+.counter-appeal-registrations__list-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.counter-appeal-registrations__filters { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.counter-appeal-registrations__filters { align-items: flex-end; }
+.counter-appeal-registrations__filters .field { flex: 1 1 200px; min-width: 200px; margin: 0; }
+.counter-appeal-registrations__clear { margin-bottom: .4rem; }
+.counter-appeal-registrations__summary { border: 1px solid var(--mc-gray-300, #ccc); border-radius: 8px; padding: 1rem 1.25rem; background: var(--mc-white, #fff); }
+.counter-appeal-registrations__row--selected td { background: var(--mc-primary-50, #eaf4f6); }
+@media (max-width: 800px) { .counter-appeal-registrations__summary-grid { grid-template-columns: 1fr; } }
+
+/* 1.4.0: botão da lista no acordeão e página de acompanhamento (nova aba) */
+.counter-appeal-registrations__actions { margin-top: 1rem; }
+.counter-appeal-registrations__actions .button { display: inline-flex; align-items: center; gap: .5rem; }
+.counter-appeal-page { max-width: 1170px; margin: 0 auto; padding: 1rem 1rem 3rem; }
+.counter-appeal-page__header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+.counter-appeal-page__subtitle { margin: .25rem 0 0; color: var(--mc-gray-500, #666); }
+.counter-appeal-tracking { display: flex; flex-direction: column; gap: 2rem; }
+.counter-appeal-tracking__status { display: flex; flex-wrap: wrap; gap: .75rem 2rem; padding: 1rem 1.25rem; border: 1px solid var(--mc-gray-300, #ccc); border-radius: 8px; background: var(--mc-white, #fff); }
+.counter-appeal-tracking__section { display: flex; flex-direction: column; gap: .75rem; padding: 1.25rem; border-radius: 8px; background: var(--mc-white, #fff); }

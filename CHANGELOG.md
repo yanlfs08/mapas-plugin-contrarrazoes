@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.4.0 - 2026-11-25
+
+- **Acompanhamento na aba Inscrições e Resultados.** A etapa de recurso dessa aba ganhou o acordeão **Contrarrazões**, entre *Recurso* e *Resposta do recurso* (componente `counter-appeal-registrations`). Ele mostra só o essencial, no formato do *Resumo* do acordeão *Recurso*:
+  - o prazo, com o selo de situação;
+  - o aviso da trava do julgamento e da publicação;
+  - o resumo: recursos enviados, recursos contestados, contrarrazões enviadas e em rascunho, inscrições que contestaram;
+  - o botão **Lista de contrarrazões**.
+- **Página "Lista de contrarrazões"**, aberta em nova aba (`GET /opportunity/counterAppeals/{fase de recurso}`, só para o gestor; componente `counter-appeal-tracking`). Ela traz:
+  - as contrarrazões por recurso, com a situação do recurso;
+  - a lista completa, com filtros por recurso, situação e busca (`?recurso=` abre filtrada);
+  - a exportação em CSV da lista filtrada.
+- A tabela de contrarrazões recebidas saiu da aba **Configuração de fases**. No lugar dela fica a contagem e o aviso de onde acompanhar.
+- Novos `Plugin::getStatusLabels()` (rótulos de status da própria fase de recurso) e `Plugin::buildPhaseConfigItem()` (dados compartilhados entre a edição da oportunidade e a página).
+- README: seção do acompanhamento com capturas e dois novos problemas comuns: cache do navegador depois de atualizar, e o *Solicitar recurso* que só aparece com o resultado da fase publicado.
+
 ## 1.3.0 - 2026-11-25
 
 Baseada na 1.1.0. **Não inclui** a resposta do avaliador às contrarrazões da 1.2.0.

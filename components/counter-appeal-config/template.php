@@ -157,32 +157,11 @@ $this->import('
                     </div>
 
                     <section class="counter-appeal-config__section">
-                        <h5 class="bold"><?= i::__('Contrarrazões recebidas') ?> ({{ sentCount(item) }} <?= i::__('enviadas') ?>, {{ item.counterAppeals.length - sentCount(item) }} <?= i::__('em rascunho') ?>)</h5>
-                        <div v-if="item.counterAppeals.length" class="counter-appeal-config__table-wrapper">
-                            <table class="counter-appeal-config__table">
-                                <thead>
-                                    <tr>
-                                        <th><?= i::__('Inscrição') ?></th>
-                                        <th><?= i::__('Autor') ?></th>
-                                        <th><?= i::__('Recurso contestado') ?></th>
-                                        <th><?= i::__('Situação') ?></th>
-                                        <th><?= i::__('Enviada em') ?></th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="ca in item.counterAppeals" :key="ca.id">
-                                        <td>{{ ca.number }}</td>
-                                        <td>{{ ca.agentName }} <small class="counter-appeal-config__muted">({{ ca.authorNumber }})</small></td>
-                                        <td>{{ ca.targetNumber }} <small class="counter-appeal-config__muted">{{ ca.targetAgentName }}</small></td>
-                                        <td>{{ statusLabel(ca.status) }}</td>
-                                        <td>{{ formatDate(ca.sentTimestamp) }}</td>
-                                        <td><a :href="ca.singleUrl" target="_blank"><?= i::__('Ver') ?></a></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <p v-else class="counter-appeal-config__muted"><?= i::__('Nenhuma contrarrazão recebida até o momento.') ?></p>
+                        <h5 class="bold"><?= i::__('Acompanhamento') ?></h5>
+                        <p class="counter-appeal-config__muted">
+                            {{ sentCount(item) }} <?= i::__('contrarrazão(ões) enviada(s) e') ?> {{ item.counterAppeals.length - sentCount(item) }} <?= i::__('em rascunho.') ?>
+                            <?= i::__('A lista completa, os números por recurso e a exportação ficam na aba') ?> <strong><?= i::__('Inscrições e Resultados') ?></strong>, <?= i::__('no acordeão "Contrarrazões" desta mesma etapa de recurso.') ?>
+                        </p>
                     </section>
                 </template>
             </div>
