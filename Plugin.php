@@ -26,7 +26,7 @@ use MapasCulturais\i;
  */
 class Plugin extends \MapasCulturais\Plugin
 {
-    const VERSION = '1.3.0';
+    const VERSION = '1.4.0';
 
     /** Faixa de versões do Mapas Culturais em que o plugin foi testado */
     const TESTED_MAPAS_VERSIONS = '7.8';
@@ -360,6 +360,36 @@ class Plugin extends \MapasCulturais\Plugin
     function isVisibleToAppellant(Opportunity $counter): bool
     {
         return filter_var(Plugin::meta($counter, 'counterAppealVisibleToAppellant'), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * Rótulos de status das inscrições de uma fase (os da fase, se o gestor os personalizou)
+     */
+    function getStatusLabels(Opportunity $phase): array
+    {
+        $labels = [
+            0 => i::__('Rascunho'),
+            1 => i::__('Pendente'),
+            2 => i::__('Inválida'),
+            3 => i::__('Não selecionada'),
+            8 => i::__('Suplente'),
+            10 => i::__('Selecionada'),
+        ];
+
+        try {
+            $custom = $phase->statusLabels;
+            if (is_array($custom) || is_object($custom)) {
+                foreach ((array) $custom as $status => $label) {
+                    if (is_scalar($label) && $label !== '') {
+                        $labels[(int) $status] = (string) $label;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // sem rótulos personalizados: fica o padrão
+        }
+
+        return $labels;
     }
 
     /**
@@ -904,6 +934,31 @@ class Plugin extends \MapasCulturais\Plugin
          * Baixa um anexo de recurso marcado como público
          * GET /opportunity/counterAppealFile/{id da fase de contrarrazões}/file:{id do arquivo}
          */
+        /**
+         * 1.4.0: página de acompanhamento das contrarrazões de uma fase de recurso (gestor)
+         * GET /opportunity/counterAppeals/{id da fase de recurso}
+         * Aberta em nova aba pelo botão "Lista de contrarrazões" da aba Inscrições e Resultados.
+         */
+        $app->hook('GET(opportunity.counterAppeals)', function () use ($app, $self) {
+            /** @var \MapasCulturais\Controllers\Opportunity $this */
+            $this->requireAuthentication();
+
+            $appeal_phase = $this->requestedEntity;
+            if (!$appeal_phase instanceof Opportunity || !Plugin::meta($appeal_phase, 'isAppealPhase')) {
+                $app->pass();
+            }
+
+            $appeal_phase->checkPermission('@control');
+
+            $edital = $appeal_phase->parent?->firstPhase ?: $appeal_phase->parent;
+            $app->view->jsObject['config']['counterAppealTracking'] = $self->buildPhaseConfigItem($appeal_phase) + [
+                'editUrl' => $edital ? $app->createUrl('opportunity', 'edit', [$edital->id]) . '#registrations' : null,
+                'opportunityName' => $edital?->name,
+            ];
+
+            $this->render('counter-appeals', ['entity' => $appeal_phase, 'edital' => $edital]);
+        });
+
         $app->hook('GET(opportunity.counterAppealFile)', function () use ($app, $self) {
             /** @var \MapasCulturais\Controllers\Opportunity $this */
             $this->requireAuthentication();
@@ -1243,47 +1298,10 @@ class Plugin extends \MapasCulturais\Plugin
             // o acordeão "Contrarrazões" já aparece (com o botão de adicionar)
             $appeal_phases = $self->getAppealPhasesOfOpportunity($opportunity);
 
-            $config = [];
-            foreach ($appeal_phases as $appeal_phase) {
-                $counter = $self->getCounterAppealPhase($appeal_phase);
-                $item = [
-                    'appealPhase' => [
-                        'id' => $appeal_phase->id,
-                        'name' => $appeal_phase->name,
-                        'registrationFrom' => $appeal_phase->registrationFrom?->format('Y-m-d H:i:s'),
-                        'registrationTo' => $appeal_phase->registrationTo?->format('Y-m-d H:i:s'),
-                        'evaluatedPhaseName' => $appeal_phase->parent?->evaluationMethodConfiguration?->name ?: $appeal_phase->parent?->name,
-                        'sentAppeals' => count($self->getSentAppeals($appeal_phase)),
-                        'judgementLocked' => $self->isAppealJudgementLocked($appeal_phase),
-                    ],
-                    'publicFieldOptions' => array_values(array_map(fn ($f) => [
-                        'name' => $f['name'],
-                        'title' => $f['title'],
-                        'type' => $f['type'],
-                    ], $self->getPhaseFormFields($appeal_phase, true))),
-                    'counter' => null,
-                    'counterAppeals' => [],
-                ];
-
-                if ($counter) {
-                    $item['counter'] = $self->serializeCounterAppealPhase($counter);
-                    foreach ($self->getCounterAppeals($counter) as $registration) {
-                        $target = Plugin::meta($registration, 'counterAppealTarget')
-                            ? App::i()->repo('Registration')->find((int) Plugin::meta($registration, 'counterAppealTarget'))
-                            : null;
-                        $item['counterAppeals'][] = $self->serializeRegistration($registration) + [
-                            'authorNumber' => Plugin::meta($registration, 'counterAppealAuthorNumber'),
-                            'targetNumber' => $target?->number,
-                            'targetAgentName' => $target?->owner?->name,
-                        ];
-                    }
-                }
-
-                $config[] = $item;
-            }
+            $config = array_map(fn ($appeal_phase) => $self->buildPhaseConfigItem($appeal_phase), $appeal_phases);
 
             $this->jsObject['config']['counterAppealConfig'] = $config;
-            $this->import('counter-appeal-config');
+            $this->import('counter-appeal-config counter-appeal-registrations');
         });
 
         // O componente "opportunity-appeal-phase-config" (módulo OpportunityAppealPhase) não tem
@@ -1414,12 +1432,72 @@ class Plugin extends \MapasCulturais\Plugin
     }
 
     /**
+     * Dados de uma fase de recurso para o gestor: configuração das contrarrazões (aba Configuração
+     * de fases), acompanhamento (aba Inscrições e Resultados) e a página da lista de contrarrazões.
+     */
+    function buildPhaseConfigItem(Opportunity $appeal_phase): array
+    {
+        $counter = $this->getCounterAppealPhase($appeal_phase);
+        $item = [
+            'appealPhase' => [
+                'id' => $appeal_phase->id,
+                'name' => $appeal_phase->name,
+                'registrationFrom' => $appeal_phase->registrationFrom?->format('Y-m-d H:i:s'),
+                'registrationTo' => $appeal_phase->registrationTo?->format('Y-m-d H:i:s'),
+                'evaluatedPhaseName' => $appeal_phase->parent?->evaluationMethodConfiguration?->name ?: $appeal_phase->parent?->name,
+                'sentAppeals' => count($this->getSentAppeals($appeal_phase)),
+                'judgementLocked' => $this->isAppealJudgementLocked($appeal_phase),
+            ],
+            'publicFieldOptions' => array_values(array_map(fn ($f) => [
+                'name' => $f['name'],
+                'title' => $f['title'],
+                'type' => $f['type'],
+            ], $this->getPhaseFormFields($appeal_phase, true))),
+            'counter' => null,
+            'counterAppeals' => [],
+            // 1.4.0: recursos enviados, para o acompanhamento na aba Inscrições e Resultados
+            'appeals' => [],
+        ];
+
+        $status_labels = $this->getStatusLabels($appeal_phase);
+
+        if ($counter) {
+            $item['counter'] = $this->serializeCounterAppealPhase($counter);
+            foreach ($this->getCounterAppeals($counter) as $registration) {
+                $target = Plugin::meta($registration, 'counterAppealTarget')
+                    ? App::i()->repo('Registration')->find((int) Plugin::meta($registration, 'counterAppealTarget'))
+                    : null;
+                $item['counterAppeals'][] = $this->serializeRegistration($registration) + [
+                    'authorNumber' => Plugin::meta($registration, 'counterAppealAuthorNumber'),
+                    'targetId' => $target?->id,
+                    'targetNumber' => $target?->number,
+                    'targetAgentName' => $target?->owner?->name,
+                ];
+            }
+        }
+
+        foreach ($this->getSentAppeals($appeal_phase) as $appeal) {
+            $item['appeals'][] = $this->serializeRegistration($appeal) + [
+                'statusLabel' => $status_labels[(int) $appeal->status] ?? (string) $appeal->status,
+            ];
+        }
+
+        // 1.4.0: página com as listas de acompanhamento (abre em nova aba)
+        $item['trackingUrl'] = App::i()->createUrl('opportunity', 'counterAppeals', [$appeal_phase->id]);
+
+        return $item;
+    }
+
+    /**
      * Insere o acordeão "Contrarrazões" no template da etapa de recurso, entre "Recurso" e
      * "Resposta do recurso" (o primeiro </mc-accordion> do template é o fim do acordeão "Recurso").
      */
     function injectCounterAppealConfig(string $template): string
     {
-        $tag = '<counter-appeal-config v-if="tab === \'config\'" :appeal-phase-id="entity.id"></counter-appeal-config>';
+        // o mesmo template é usado nas abas "Configuração de fases" (tab = config) e
+        // "Inscrições e Resultados" (tab = registrations): um acordeão para cada aba
+        $tag = '<counter-appeal-config v-if="tab === \'config\'" :appeal-phase-id="entity.id"></counter-appeal-config>'
+            . "\n" . '<counter-appeal-registrations v-if="tab === \'registrations\'" :appeal-phase-id="entity.id"></counter-appeal-registrations>';
 
         if (str_contains($template, '<counter-appeal-config')) {
             return $template;

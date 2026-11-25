@@ -21,6 +21,7 @@ Instalação: este repositório inteiro vira a pasta `src/plugins/Contrarrazoes`
 - **Sem tela para quem enviou (1.3.0):** a contrarrazão enviada é exibida no modal da linha do tempo; `GET(registration.<<view|single>>)` da contrarrazão redireciona o autor para lá (`&contrarrazao={id}`).
 - **Configuração sem botão Salvar (1.3.0):** o acordeão salva sozinho (debounce de 1,5 s), como os `entity-field :autosave` do núcleo.
 - **Base:** a 1.3.0 parte da 1.1.0; a resposta do avaliador (1.2.0) não está nela.
+- **Acompanhamento (1.4.0):** a aba *Inscrições e Resultados* tem só o resumo (`counter-appeal-registrations`, injetado com `v-if="tab === 'registrations'"` no mesmo template `opportunity-appeal-phase-config`). As listas ficam na página `GET opportunity.counterAppeals/{fase de recurso}` (view `views/opportunity/counter-appeals.php`, componente `counter-appeal-tracking`, só `@control`), aberta em nova aba. A aba *Configuração de fases* só configura.
 - **Notificar o autor do recurso NÃO foi pedido.** O plugin não envia e-mails.
 
 ## Arquitetura
