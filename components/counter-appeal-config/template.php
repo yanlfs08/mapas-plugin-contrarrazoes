@@ -76,7 +76,7 @@ $this->import('
                         </div>
                         <p class="counter-appeal-config__muted"><?= i::__('Sugestão: comece depois do fim do prazo de recurso e termine antes do início da resposta do recurso.') ?></p>
                         <mc-alert v-if="item.appealPhase.judgementLocked" type="warning">
-                            <?= i::__('O julgamento dos recursos desta fase fica travado até o término do prazo de contrarrazões. Sem prazo definido, o julgamento continua travado.') ?>
+                            <?= i::__('Enquanto o prazo de contrarrazões não terminar, o julgamento dos recursos desta fase fica travado e o resultado da etapa de recurso não pode ser publicado. Sem prazo definido, os dois continuam travados.') ?>
                         </mc-alert>
                     </section>
 
@@ -87,7 +87,7 @@ $this->import('
 
                     <section class="counter-appeal-config__section">
                         <h5 class="bold"><?= i::__('Campos do recurso visíveis para os candidatos') ?></h5>
-                        <p class="counter-appeal-config__muted"><?= i::__('Marque o que os candidatos poderão ler de cada recurso. O número da inscrição e o nome do proponente são sempre exibidos.') ?></p>
+                        <p class="counter-appeal-config__muted"><?= i::__('Marque o que os candidatos poderão ler de cada recurso. O número da inscrição é sempre exibido.') ?></p>
                         <mc-alert type="helper">
                             <?= i::__('Por proteção de dados pessoais (LGPD), campos de CPF, CNPJ, e-mail, telefone, endereço, dados bancários, pessoas, agentes e espaços não podem ser publicados.') ?>
                         </mc-alert>
@@ -102,10 +102,42 @@ $this->import('
                         </p>
                     </section>
 
+                    <section class="counter-appeal-config__section">
+                        <h5 class="bold"><?= i::__('Publicidade') ?></h5>
+                        <label class="counter-appeal-config__option">
+                            <input type="checkbox" v-model="item.form.counterAppealShowNames">
+                            <?= i::__('Exibir o nome dos proponentes nos recursos e nas contrarrazões') ?>
+                        </label>
+                        <p class="counter-appeal-config__muted counter-appeal-config__hint">
+                            <?= i::__('Desmarcado, os candidatos veem apenas o número da inscrição. A gestão e a comissão sempre veem o nome.') ?>
+                        </p>
+                        <label class="counter-appeal-config__option">
+                            <input type="checkbox" v-model="item.form.counterAppealVisibleToAppellant">
+                            <?= i::__('O autor do recurso pode ver as contrarrazões que o recurso dele recebeu') ?>
+                        </label>
+                        <p class="counter-appeal-config__muted counter-appeal-config__hint">
+                            <?= i::__('As contrarrazões enviadas aparecem para ele na linha do tempo da inscrição, junto do "Seu recurso". Só são exibidos os campos de tipos publicáveis e os anexos.') ?>
+                        </p>
+                    </section>
+
+                    <section class="counter-appeal-config__section">
+                        <h5 class="bold"><?= i::__('Formulário da contrarrazão') ?></h5>
+                        <mc-alert v-if="!item.formFieldsCount" type="warning">
+                            <?= i::__('O formulário da contrarrazão ainda não tem campos. Crie os campos em "Configurar formulário" antes de abrir o prazo: sem eles, os candidatos não conseguem apresentar contrarrazões.') ?>
+                        </mc-alert>
+                        <p v-else class="counter-appeal-config__muted">
+                            {{ item.formFieldsCount }} <?= i::__('campo(s) no formulário.') ?>
+                            <?= i::__('Depois de alterar o formulário, recarregue esta página para atualizar a contagem.') ?>
+                        </p>
+                    </section>
+
+                    <p class="counter-appeal-config__muted counter-appeal-config__autosave">
+                        <?= i::__('As alterações desta seção são salvas automaticamente.') ?>
+                        <span v-if="item.saving"><?= i::__('Salvando...') ?></span>
+                        <span v-else-if="item.saved"><?= i::__('Salvo.') ?></span>
+                    </p>
+
                     <div class="counter-appeal-config__actions">
-                        <button class="button button--primary" :disabled="item.saving" @click="saveConfig(item)">
-                            <?= i::__('Salvar configurações') ?>
-                        </button>
                         <a :href="item.counterEntity.formBuilderUrl" class="button button--icon button--primary button--md" target="_blank">
                             <?= i::__('Configurar formulário') ?> <mc-icon name="external" size="sm"></mc-icon>
                         </a>

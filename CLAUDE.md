@@ -13,8 +13,14 @@ Instalação: este repositório inteiro vira a pasta `src/plugins/Contrarrazoes`
 - **Elegibilidade:** **sempre** os inscritos na mesma etapa do recurso (a fase avaliada, `getEligibilityBasePhase()`). Não é configurável desde a 1.1.0: o metadado `counterAppealEligibility` continua registrado só por compatibilidade e é ignorado (inclusive se um cliente antigo o enviar).
 - **Uma contrarrazão por recurso** por inscrição. O mesmo candidato pode contestar vários recursos.
 - **Autor não contesta o próprio recurso.**
-- **Trava do julgamento:** a comissão não finaliza a avaliação e ninguém defere/indefere o recurso antes do fim do prazo de contrarrazões. Sem prazo definido, o julgamento fica travado.
+- **Trava do julgamento:** a comissão não finaliza a avaliação, ninguém defere/indefere o recurso e o resultado da etapa de recurso não é publicado (botão, `applyEvaluationsContinuous` e job `PublishResult`, via `entity(Opportunity).publishRegistrations:before`) antes do fim do prazo de contrarrazões. Sem prazo definido, fica travado.
 - **Publicidade:** o gestor escolhe quais campos do formulário de recurso ficam visíveis. Tipos com dados pessoais nunca são publicáveis (LGPD); veja `PUBLIC_FIELD_TYPES`.
+- **Nome dos proponentes (1.3.0):** configurável (`counterAppealShowNames`, padrão exibe). Gestão e comissão sempre veem.
+- **Autor do recurso vê as contrarrazões (1.3.0):** configurável (`counterAppealVisibleToAppellant`, padrão não). Só campos publicáveis + anexos; permissão `view|viewPrivateFiles` (nunca `viewPrivateData`) no hook próprio.
+- **Formulário (1.3.0):** não é criado automaticamente; sem campos, `createCounterAppealRegistration` recusa.
+- **Sem tela para quem enviou (1.3.0):** a contrarrazão enviada é exibida no modal da linha do tempo; `GET(registration.<<view|single>>)` da contrarrazão redireciona o autor para lá (`&contrarrazao={id}`).
+- **Configuração sem botão Salvar (1.3.0):** o acordeão salva sozinho (debounce de 1,5 s), como os `entity-field :autosave` do núcleo.
+- **Base:** a 1.3.0 parte da 1.1.0; a resposta do avaliador (1.2.0) não está nela.
 - **Notificar o autor do recurso NÃO foi pedido.** O plugin não envia e-mails.
 
 ## Arquitetura

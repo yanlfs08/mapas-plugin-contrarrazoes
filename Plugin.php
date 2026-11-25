@@ -8,7 +8,6 @@ use MapasCulturais\Entities\ChatMessage;
 use MapasCulturais\Entities\Opportunity;
 use MapasCulturais\Entities\Registration;
 use MapasCulturais\Entities\RegistrationEvaluation;
-use MapasCulturais\Entities\RegistrationFieldConfiguration;
 use MapasCulturais\Entities\RegistrationStep;
 use MapasCulturais\Exceptions\PermissionDenied;
 use MapasCulturais\i;
@@ -27,7 +26,7 @@ use MapasCulturais\i;
  */
 class Plugin extends \MapasCulturais\Plugin
 {
-    const VERSION = '1.1.0';
+    const VERSION = '1.3.0';
 
     /** Faixa de versões do Mapas Culturais em que o plugin foi testado */
     const TESTED_MAPAS_VERSIONS = '7.8';
@@ -51,11 +50,9 @@ class Plugin extends \MapasCulturais\Plugin
             // tipos de campo do recurso que podem ser publicados
             'publicFieldTypes' => self::PUBLIC_FIELD_TYPES,
 
-            // trava o julgamento dos recursos até o fim do prazo de contrarrazões
+            // trava o julgamento dos recursos (e a publicação do resultado da etapa de recurso)
+            // até o fim do prazo de contrarrazões
             'lockAppealJudgement' => true,
-
-            // nome padrão do campo criado no formulário de contrarrazões
-            'defaultFieldTitle' => i::__('Fundamentação da contrarrazão'),
         ];
 
         parent::__construct($config);
@@ -104,6 +101,28 @@ class Plugin extends \MapasCulturais\Plugin
             }
 
             $app->redirect($edital->singleUrl);
+        });
+
+        // 1.3.0: a contrarrazão enviada não tem tela própria para o autor. A ficha (/inscricao/{id}/,
+        // para onde o Mapas leva depois do envio) devolve o autor à linha do tempo da inscrição dele,
+        // com o modal aberto e a contrarrazão expandida. Gestor e comissão continuam vendo a ficha.
+        $app->hook('GET(registration.<<view|single>>):before', function () use ($self, $app) {
+            /** @var \MapasCulturais\Controllers\Registration $this */
+            $registration = $this->requestedEntity;
+            if (!$registration instanceof Registration || !Plugin::meta($registration->opportunity, 'isCounterAppealPhase')
+                || $registration->status < Registration::STATUS_SENT || !Plugin::isOwnedBy($registration, $app->user)) {
+                return;
+            }
+
+            $counter = $registration->opportunity;
+            if ($counter->canUser('@control')) {
+                return;
+            }
+
+            $author_number = (string) Plugin::meta($registration, 'counterAppealAuthorNumber');
+            if ($author = $author_number ? $self->findAuthorRegistration($counter, $author_number) : null) {
+                $app->redirect($self->getCounterAppealListUrl($author, $counter, $registration));
+            }
         });
 
         // ao excluir a fase de recurso, exclui também a fase de contrarrazões.
@@ -168,6 +187,19 @@ class Plugin extends \MapasCulturais\Plugin
         $this->registerOpportunityMetadata('counterAppealPublicFields', [
             'label' => i::__('Campos do recurso visíveis aos candidatos'),
             'type' => 'json',
+        ]);
+
+        // 1.3.0: nome dos proponentes nos recursos (e nas contrarrazões) exibidos aos candidatos.
+        // Sem valor gravado (fases antigas) = exibe, como na 1.1.0. Veja Plugin::showNames().
+        $this->registerOpportunityMetadata('counterAppealShowNames', [
+            'label' => i::__('Exibir o nome dos proponentes aos candidatos'),
+            'type' => 'boolean',
+        ]);
+
+        // 1.3.0: o autor do recurso pode ler as contrarrazões enviadas contra o seu recurso
+        $this->registerOpportunityMetadata('counterAppealVisibleToAppellant', [
+            'label' => i::__('O autor do recurso vê as contrarrazões recebidas'),
+            'type' => 'boolean',
         ]);
 
         $this->registerRegistrationMetadata('counterAppealTarget', [
@@ -311,6 +343,44 @@ class Plugin extends \MapasCulturais\Plugin
         }
 
         return new DateTime() <= $counter->registrationTo;
+    }
+
+    /**
+     * Nome dos proponentes visível aos candidatos (padrão: sim, como na 1.1.0)
+     */
+    function showNames(Opportunity $counter): bool
+    {
+        $value = Plugin::meta($counter, 'counterAppealShowNames');
+        return $value === null || $value === '' ? true : filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * O autor do recurso pode ler as contrarrazões recebidas (padrão: não)
+     */
+    function isVisibleToAppellant(Opportunity $counter): bool
+    {
+        return filter_var(Plugin::meta($counter, 'counterAppealVisibleToAppellant'), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * O usuário é o dono da inscrição (por qualquer agente dele)
+     */
+    static function isOwnedBy(Registration $registration, $user): bool
+    {
+        return $user && !$user->is('guest') && $registration->owner?->user?->id === $user->id;
+    }
+
+    function getPublishLockMessage(Opportunity $appeal_phase): string
+    {
+        $counter = $this->getCounterAppealPhase($appeal_phase);
+        if ($counter && $counter->registrationTo) {
+            return sprintf(
+                i::__('O resultado da etapa de recurso só pode ser publicado após o encerramento do prazo de contrarrazões (%s).'),
+                $counter->registrationTo->format('d/m/Y H:i')
+            );
+        }
+
+        return i::__('O resultado da etapa de recurso só pode ser publicado após o encerramento do prazo de contrarrazões, que ainda não foi definido.');
     }
 
     function getJudgementLockMessage(Opportunity $appeal_phase): string
@@ -620,6 +690,12 @@ class Plugin extends \MapasCulturais\Plugin
         $data['isRegistrationOpen'] = $counter->isRegistrationOpen();
         $data['counterAppealEligibility'] = self::ELIGIBILITY_SAME_PHASE; // fixo desde a 1.1.0
         $data['counterAppealPublicFields'] = array_values((array) Plugin::meta($counter, 'counterAppealPublicFields'));
+        $data['counterAppealShowNames'] = $this->showNames($counter);
+        $data['counterAppealVisibleToAppellant'] = $this->isVisibleToAppellant($counter);
+        // o formulário não é mais criado automaticamente (1.3.0): o gestor monta pelo "Configurar formulário"
+        $data['formFieldsCount'] = count($this->getPhaseFormFields($counter));
+        $appeal_phase = $this->getAppealPhase($counter);
+        $data['judgementLocked'] = $appeal_phase ? $this->isAppealJudgementLocked($appeal_phase) : false;
         $data['formBuilderUrl'] = App::i()->createUrl('opportunity', 'formBuilder', [$counter->id]);
 
         return $data;
@@ -677,12 +753,29 @@ class Plugin extends \MapasCulturais\Plugin
                 return;
             }
 
+            // avaliadores do recurso. O autor do recurso também "vê" o próprio recurso, mas não entra
+            // por aqui: ele só lê as contrarrazões se o gestor liberar (hook abaixo)
             $target_id = (int) Plugin::meta($this, 'counterAppealTarget');
-            if ($target_id && ($appeal = $app->repo('Registration')->find($target_id))) {
+            if ($target_id && ($appeal = $app->repo('Registration')->find($target_id)) && !Plugin::isOwnedBy($appeal, $user)) {
                 $result = $appeal->canUser('view', $user);
             }
         });
 
+        // autor do recurso: lê a contrarrazão enviada e baixa os anexos dela, quando o gestor libera
+        // (sem viewPrivateData: os campos chegam a ele já filtrados pelos tipos publicáveis).
+        // A configuração limpa o cache de permissões das contrarrazões (clearPermissionCaches).
+        $app->hook('can(Registration.<<view|viewPrivateFiles>>)', function ($user, &$result) use ($self, $app) {
+            /** @var Registration $this */
+            if ($result || !Plugin::meta($this->opportunity, 'isCounterAppealPhase') || $this->status < Registration::STATUS_SENT) {
+                return;
+            }
+
+            $target_id = (int) Plugin::meta($this, 'counterAppealTarget');
+            $appeal = $target_id ? $app->repo('Registration')->find($target_id) : null;
+            if ($appeal && Plugin::isOwnedBy($appeal, $user) && $self->isVisibleToAppellant($this->opportunity)) {
+                $result = true;
+            }
+        });
     }
 
     /**
@@ -751,6 +844,12 @@ class Plugin extends \MapasCulturais\Plugin
                 $allowed = array_map(fn ($f) => $f['name'], $self->getPhaseFormFields($appeal_phase, true));
                 $requested = array_values(array_filter((array) ($data['counterAppealPublicFields'] ?: []), 'is_string'));
                 $counter->counterAppealPublicFields = array_values(array_intersect($requested, $allowed));
+            }
+
+            foreach (['counterAppealShowNames', 'counterAppealVisibleToAppellant'] as $prop) {
+                if (array_key_exists($prop, $data)) {
+                    $counter->$prop = filter_var($data[$prop], FILTER_VALIDATE_BOOLEAN);
+                }
             }
 
             // valida só as datas: as demais validações da oportunidade (área de interesse etc.)
@@ -878,6 +977,11 @@ class Plugin extends \MapasCulturais\Plugin
                 $this->errorJson(i::__('O prazo para apresentar contrarrazões não está aberto.'), 403);
             }
 
+            // o formulário não é criado automaticamente: sem campos, a contrarrazão sairia vazia
+            if (!$self->getPhaseFormFields($counter)) {
+                $this->errorJson(i::__('O formulário de contrarrazão ainda não foi configurado pela gestão do edital.'), 403);
+            }
+
             $registration = new Registration();
             $registration->opportunity = $counter;
             $registration->owner = $author->owner;
@@ -910,7 +1014,7 @@ class Plugin extends \MapasCulturais\Plugin
     }
 
     /**
-     * Cria a fase de contrarrazões, com um formulário padrão
+     * Cria a fase de contrarrazões (sem campos no formulário)
      */
     function createCounterAppealPhase(Opportunity $appeal_phase): Opportunity
     {
@@ -936,25 +1040,16 @@ class Plugin extends \MapasCulturais\Plugin
             $counter->counterAppealOf = $appeal_phase->id;
             $counter->counterAppealEligibility = self::ELIGIBILITY_SAME_PHASE; // fixo desde a 1.1.0
             $counter->counterAppealPublicFields = [];
+            $counter->counterAppealShowNames = true;
+            $counter->counterAppealVisibleToAppellant = false;
             $counter->save(true);
 
+            // só a etapa (vazia), que o editor de formulário do Mapas espera encontrar.
+            // Os campos são criados pelo gestor em "Configurar formulário" (desde a 1.3.0).
             $step = new RegistrationStep();
             $step->name = i::__('Contrarrazão');
             $step->opportunity = $counter;
             $step->save(true);
-
-            $field = new RegistrationFieldConfiguration();
-            $field->owner = $counter;
-            $field->step = $step;
-            $field->title = $this->config['defaultFieldTitle'];
-            $field->description = i::__('Apresente os argumentos contrários ao recurso.');
-            $field->fieldType = 'textarea';
-            $field->required = true;
-            $field->displayOrder = 1;
-            $field->fieldOptions = [];
-            $field->config = [];
-            $field->categories = [];
-            $field->save(true);
 
             $appeal_phase->counterAppealPhase = $counter->id;
             $appeal_phase->save(true);
@@ -1087,6 +1182,41 @@ class Plugin extends \MapasCulturais\Plugin
             if ($self->isAppealJudgementLocked($this->opportunity)) {
                 throw new PermissionDenied($app->user, $this, 'changeStatus', $self->getJudgementLockMessage($this->opportunity));
             }
+        });
+
+        // aplicação em lote da avaliação contínua: barra antes de começar, com mensagem clara
+        // (sem isso, a trava acima interromperia o lote no meio)
+        $app->hook('POST(opportunity.applyEvaluationsContinuous):before', function () use ($self) {
+            /** @var \MapasCulturais\Controllers\Opportunity $this */
+            $appeal_phase = $this->requestedEntity;
+            if ($appeal_phase instanceof Opportunity && Plugin::meta($appeal_phase, 'isAppealPhase') && $self->isAppealJudgementLocked($appeal_phase)) {
+                $this->errorJson($self->getJudgementLockMessage($appeal_phase), 403);
+            }
+        });
+
+        // 1.3.0: com o prazo de contrarrazões aberto (ou sem prazo), o resultado da etapa de recurso
+        // não é publicado. Pelo botão de publicar (resposta clara ao gestor)...
+        $app->hook('ALL(opportunity.publishRegistrations):before', function () use ($self) {
+            /** @var \MapasCulturais\Controllers\Opportunity $this */
+            $appeal_phase = $this->requestedEntity;
+            if ($appeal_phase instanceof Opportunity && Plugin::meta($appeal_phase, 'isAppealPhase') && $self->isAppealJudgementLocked($appeal_phase)) {
+                $this->errorJson($self->getPublishLockMessage($appeal_phase), 403);
+            }
+        });
+
+        // ...e por qualquer outro caminho, como a publicação agendada (job PublishResult).
+        // Opportunity::publishRegistrations() abre uma transação antes deste hook: desfaz antes de barrar.
+        $app->hook('entity(Opportunity).publishRegistrations:before', function () use ($self, $app) {
+            /** @var Opportunity $this */
+            if (!Plugin::meta($this, 'isAppealPhase') || !$self->isAppealJudgementLocked($this)) {
+                return;
+            }
+
+            if ($app->em->getConnection()->isTransactionActive()) {
+                $app->em->rollback();
+            }
+            $app->log->warning("Contrarrazoes: publicação do resultado da fase de recurso {$this->id} barrada: prazo de contrarrazões aberto ou não definido.");
+            throw new PermissionDenied($app->user, $this, 'publishRegistrations', $self->getPublishLockMessage($this));
         });
     }
 
@@ -1240,6 +1370,7 @@ class Plugin extends \MapasCulturais\Plugin
                 'appeal' => $appeal,
                 'counter' => $counter,
                 'listUrl' => $author ? $self->getCounterAppealListUrl($author, $counter) : null,
+                'showName' => $self->showNames($counter) || $counter->canUser('@control'),
             ]);
         });
 
@@ -1272,6 +1403,9 @@ class Plugin extends \MapasCulturais\Plugin
                 'isOpen' => $counter->isRegistrationOpen(),
                 'judgementLocked' => $self->isAppealJudgementLocked($appeal_phase),
                 'lockMessage' => $self->isAppealJudgementLocked($appeal_phase) ? $self->getJudgementLockMessage($appeal_phase) : null,
+                // a comissão sempre vê os nomes; estes dois avisam o que os candidatos veem
+                'showNames' => $self->showNames($counter),
+                'visibleToAppellant' => $self->isVisibleToAppellant($counter),
                 'items' => $items,
             ];
             $this->import('counter-appeal-evaluation');
@@ -1306,9 +1440,10 @@ class Plugin extends \MapasCulturais\Plugin
 
     /**
      * Endereço da linha do tempo da inscrição com a lista de recursos já aberta
-     * (o componente counter-appeal-timeline abre o modal quando vê ?contrarrazoes={id da fase})
+     * (o componente counter-appeal-timeline abre o modal quando vê ?contrarrazoes={id da fase};
+     * com &contrarrazao={id}, a lista já abre com essa contrarrazão expandida)
      */
-    function getCounterAppealListUrl(Registration $registration, Opportunity $counter): string
+    function getCounterAppealListUrl(Registration $registration, Opportunity $counter, ?Registration $expand = null): string
     {
         // usa o endereço da inscrição na 1ª fase (o mesmo de "Minhas inscrições"); a página é a mesma
         $first = $registration->opportunity->firstPhase;
@@ -1316,7 +1451,8 @@ class Plugin extends \MapasCulturais\Plugin
             $registration = App::i()->repo('Registration')->findOneBy(['opportunity' => $first, 'number' => $registration->number]) ?: $registration;
         }
 
-        return $registration->singleUrl . '?contrarrazoes=' . $counter->id . '#acompanhamento';
+        return $registration->singleUrl . '?contrarrazoes=' . $counter->id
+            . ($expand ? '&contrarrazao=' . $expand->id : '') . '#acompanhamento';
     }
 
     /**
@@ -1377,28 +1513,59 @@ class Plugin extends \MapasCulturais\Plugin
         }
 
         $public_fields = array_values((array) Plugin::meta($counter, 'counterAppealPublicFields'));
+        $show_names = $this->showNames($counter) || $counter->canUser('@control');
+        $visible_to_appellant = $this->isVisibleToAppellant($counter);
+        // campos da contrarrazão que o autor do recurso pode ler: só os tipos publicáveis (LGPD) e anexos
+        $counter_public_fields = array_map(fn ($f) => $f['name'], $this->getPhaseFormFields($counter, true));
         // recursos de qualquer inscrição do usuário contam como "seus" (não podem ser contestados por ele)
         $my_numbers = array_map(fn ($r) => (string) $r->number, $all_candidates);
         if ($registration) {
             $my_numbers[] = (string) $registration->number;
         }
 
+        $data['showNames'] = $show_names;
+        $data['visibleToAppellant'] = $visible_to_appellant;
+        // sem campos no formulário, ninguém consegue iniciar uma contrarrazão
+        $data['formReady'] = (bool) $this->getPhaseFormFields($counter);
+
         foreach ($this->getSentAppeals($appeal_phase) as $appeal) {
+            $is_mine = in_array((string) $appeal->number, $my_numbers, true);
+
+            // a contrarrazão do próprio candidato: o conteúdo enviado vai junto, para "Exibir contrarrazão"
             $mine = [];
             foreach ($candidates as $candidate) {
                 if ($existing = $this->findCounterAppealBy($counter, $appeal, (string) $candidate->number)) {
-                    $mine[] = $this->serializeRegistration($existing) + ['authorNumber' => $candidate->number];
+                    $mine[] = $this->serializeRegistration($existing) + [
+                        'authorNumber' => $candidate->number,
+                        'fields' => $existing->status >= Registration::STATUS_SENT ? $this->getRegistrationFieldValues($existing) : [],
+                    ];
+                }
+            }
+
+            // contrarrazões recebidas pelo recurso do candidato (só se o gestor liberou)
+            $received = [];
+            if ($is_mine && $visible_to_appellant) {
+                foreach ($this->getCounterAppeals($counter, $appeal, Registration::STATUS_SENT) as $counter_appeal) {
+                    $author_number = (string) Plugin::meta($counter_appeal, 'counterAppealAuthorNumber');
+                    $received[] = [
+                        'id' => $counter_appeal->id,
+                        'authorNumber' => $author_number,
+                        'agentName' => $show_names ? $counter_appeal->owner?->name : null,
+                        'sentTimestamp' => $counter_appeal->sentTimestamp?->format('Y-m-d H:i:s'),
+                        'fields' => $this->getRegistrationFieldValues($counter_appeal, $counter_public_fields),
+                    ];
                 }
             }
 
             $data['appeals'][] = [
                 'id' => $appeal->id,
                 'number' => $appeal->number,
-                'agentName' => $appeal->owner?->name,
+                'agentName' => $show_names || $is_mine ? $appeal->owner?->name : null,
                 'sentTimestamp' => $appeal->sentTimestamp?->format('Y-m-d H:i:s'),
-                'isMine' => in_array((string) $appeal->number, $my_numbers, true),
+                'isMine' => $is_mine,
                 'fields' => $public_fields ? $this->getRegistrationFieldValues($appeal, $public_fields, $counter) : [],
                 'myCounterAppeals' => $mine,
+                'receivedCounterAppeals' => $received,
             ];
         }
 

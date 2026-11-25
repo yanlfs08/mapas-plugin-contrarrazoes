@@ -20,6 +20,14 @@ $this->import('
 
     <mc-alert v-if="config.judgementLocked" type="warning">{{ config.lockMessage }}</mc-alert>
 
+    <p class="counter-appeal-evaluation__muted counter-appeal-evaluation__visibility">
+        <mc-icon name="info" size="sm"></mc-icon>
+        <template v-if="config.showNames"><?= i::__('Os candidatos veem o nome dos proponentes neste edital.') ?></template>
+        <template v-else><?= i::__('Os nomes abaixo aparecem só para a comissão e a gestão: os candidatos veem apenas o número da inscrição.') ?></template>
+        <template v-if="config.visibleToAppellant"> <?= i::__('O autor do recurso também lê as contrarrazões enviadas a ele.') ?></template>
+        <template v-else> <?= i::__('O autor do recurso não vê estas contrarrazões.') ?></template>
+    </p>
+
     <p v-if="!items.length" class="counter-appeal-evaluation__muted"><?= i::__('Nenhuma contrarrazão foi enviada a este recurso.') ?></p>
 
     <article v-for="item in items" :key="item.id" class="counter-appeal-evaluation__item">

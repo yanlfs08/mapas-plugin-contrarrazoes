@@ -30,7 +30,17 @@ app.component('counter-appeal-list', {
             filters: {},
             selectedAuthor: {},
             processing: null,
+            // contrarrazões abertas com "Exibir contrarrazão" (id => true)
+            expanded: {},
         };
+    },
+
+    mounted() {
+        // &contrarrazao={id}: chegou da ficha da contrarrazão (ou logo depois do envio) -> já abre ela
+        const id = new URLSearchParams(window.location.search).get('contrarrazao');
+        if (id) {
+            this.expanded[id] = true;
+        }
     },
 
     computed: {
@@ -78,12 +88,22 @@ app.component('counter-appeal-list', {
                     appeal_registration_id: appeal.id,
                     author_registration_id: authorId,
                 });
+                if (data.status > 0) {
+                    // já enviada: mostra aqui mesmo, sem sair da linha do tempo
+                    this.expanded[data.id] = true;
+                    this.processing = null;
+                    return;
+                }
                 this.messages.success(this.text('Contrarrazão criada'));
-                window.location.href = data.status > 0 ? data.singleUrl : data.editUrl;
+                window.location.href = data.editUrl;
             } catch (error) {
                 this.messages.error(error?.data || error);
                 this.processing = null;
             }
+        },
+
+        toggle(id) {
+            this.expanded[id] = !this.expanded[id];
         },
 
         formatDate(value) {

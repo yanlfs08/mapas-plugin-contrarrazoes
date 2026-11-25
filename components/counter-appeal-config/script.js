@@ -29,6 +29,30 @@ app.component('counter-appeal-config', {
         return { item };
     },
 
+    computed: {
+        payloadKey() {
+            return JSON.stringify(this.payload(this.item));
+        },
+    },
+
+    watch: {
+        payloadKey(value, old) {
+            // a primeira leitura (e a troca de fase criada/excluída) não grava nada
+            if (!old || old === 'null' || value === 'null' || value === this.lastSaved) {
+                return;
+            }
+            this.scheduleSave(this.item);
+        },
+    },
+
+    created() {
+        this.lastSaved = JSON.stringify(this.payload(this.item));
+    },
+
+    beforeUnmount() {
+        clearTimeout(this.saveTimer);
+    },
+
     methods: {
         buildItem(item) {
             const counter = item.counter;
@@ -36,10 +60,18 @@ app.component('counter-appeal-config', {
                 ...item,
                 processing: false,
                 saving: false,
+                saved: false,
+                formFieldsCount: counter?.formFieldsCount ?? 0,
                 counterEntity: counter ? this.toEntity(counter) : null,
-                form: {
-                    counterAppealPublicFields: [...(counter?.counterAppealPublicFields || [])],
-                },
+                form: this.formFrom(counter),
+            };
+        },
+
+        formFrom(counter) {
+            return {
+                counterAppealPublicFields: [...(counter?.counterAppealPublicFields || [])],
+                counterAppealShowNames: counter ? counter.counterAppealShowNames !== false : true,
+                counterAppealVisibleToAppellant: !!counter?.counterAppealVisibleToAppellant,
             };
         },
 
@@ -58,7 +90,8 @@ app.component('counter-appeal-config', {
             try {
                 const data = await this.appealPhaseEntity(item).invoke('createCounterAppealPhase', {});
                 item.counterEntity = this.toEntity(data);
-                item.form.counterAppealPublicFields = [...(data.counterAppealPublicFields || [])];
+                item.form = this.formFrom(data);
+                item.formFieldsCount = data.formFieldsCount;
                 this.messages.success(this.text('Fase de contrarrazões criada com sucesso'));
             } catch (error) {
                 this.messages.error(error?.data || error);
@@ -66,20 +99,46 @@ app.component('counter-appeal-config', {
             item.processing = false;
         },
 
-        async saveConfig(item) {
-            item.saving = true;
+        // Salvamento automático, como os demais campos da etapa de recurso (entity-field :autosave):
+        // não há botão "Salvar" próprio, que se confundia com o botão "Salvar" do Mapas.
+        scheduleSave(item) {
+            if (!item.counterEntity) {
+                return;
+            }
+            clearTimeout(this.saveTimer);
+            item.saved = false;
+            this.saveTimer = setTimeout(() => this.saveConfig(item), 1500);
+        },
+
+        payload(item) {
             const counter = item.counterEntity;
-            const payload = {
+            if (!counter) {
+                return null;
+            }
+            return {
                 counterAppealPublicFields: item.form.counterAppealPublicFields.length ? item.form.counterAppealPublicFields : '',
+                counterAppealShowNames: item.form.counterAppealShowNames ? 1 : 0,
+                counterAppealVisibleToAppellant: item.form.counterAppealVisibleToAppellant ? 1 : 0,
                 registrationFrom: counter.registrationFrom ? counter.registrationFrom.sql() : '',
                 registrationTo: counter.registrationTo ? counter.registrationTo.sql() : '',
             };
+        },
+
+        async saveConfig(item) {
+            const counter = item.counterEntity;
+            if (!counter) {
+                return;
+            }
+            const payload = this.payload(item);
+            this.lastSaved = JSON.stringify(payload);
+            item.saving = true;
 
             try {
                 const data = await counter.invoke('saveCounterAppealConfig', payload);
-                item.counterEntity = this.toEntity(data);
-                item.form.counterAppealPublicFields = [...(data.counterAppealPublicFields || [])];
-                this.messages.success(this.text('Configurações salvas'));
+                item.formFieldsCount = data.formFieldsCount;
+                item.appealPhase.judgementLocked = !!data.judgementLocked;
+                item.saved = true;
+                this.messages.success(this.text('Modificações salvas'));
             } catch (error) {
                 const data = error?.data;
                 if (data && typeof data === 'object') {
@@ -96,7 +155,7 @@ app.component('counter-appeal-config', {
                 await item.counterEntity.invoke('deleteCounterAppealPhase', {});
                 item.counterEntity = null;
                 item.counterAppeals = [];
-                item.form.counterAppealPublicFields = [];
+                item.form = this.formFrom(null);
                 this.messages.success(this.text('Fase de contrarrazões excluída'));
             } catch (error) {
                 this.messages.error(error?.data || error);
