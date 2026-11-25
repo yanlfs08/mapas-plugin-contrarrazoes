@@ -26,7 +26,7 @@ use MapasCulturais\i;
  */
 class Plugin extends \MapasCulturais\Plugin
 {
-    const VERSION = '1.4.2';
+    const VERSION = '1.4.3';
 
     /** Faixa de versões do Mapas Culturais em que o plugin foi testado */
     const TESTED_MAPAS_VERSIONS = '7.8';
@@ -55,7 +55,11 @@ class Plugin extends \MapasCulturais\Plugin
             'lockAppealJudgement' => true,
 
             // não envia os e-mails automáticos do Mapas (módulo MailNotification) quando o candidato
-            // abre ou envia um recurso. Os e-mails das inscrições e das contrarrazões continuam.
+            // abre ou envia uma contrarrazão ("Inscrição iniciada"/"Inscrição enviada")
+            'disableCounterAppealMails' => true,
+
+            // idem para os recursos (e-mail "start_data_collection_phase" na abertura do recurso).
+            // Os e-mails das inscrições comuns continuam.
             'disableAppealMails' => true,
         ];
 
@@ -67,32 +71,41 @@ class Plugin extends \MapasCulturais\Plugin
      * ------------------------------------------------------------------- */
 
     /**
-     * Desliga os e-mails automáticos do Mapas para os recursos.
+     * Desliga os e-mails automáticos do Mapas para as contrarrazões e os recursos.
      *
-     * O módulo MailNotification envia "start_data_collection_phase" quando a inscrição do recurso
-     * é criada e, se ligado para outras fases, "send_registration" no envio. Os dois passam pelos
-     * hooks abaixo, que cancelam o envio pela variável $enable.
+     * A fase de contrarrazões é uma oportunidade de primeiro nível, então o módulo MailNotification
+     * trata cada contrarrazão como uma inscrição comum: manda "start_registration" quando ela é criada
+     * e "send_registration" quando é enviada. No recurso, manda "start_data_collection_phase" na
+     * abertura. Todos passam pelos hooks abaixo, que cancelam o envio pela variável $enable.
      * Os e-mails do próprio módulo OpportunityAppealPhase já vêm desligados por padrão
      * (SEND_MAIL_OPPORTUNITY_APPEAL_PHASE=false).
      */
     protected function initMailHooks()
     {
-        if (!$this->config['disableAppealMails']) {
+        $skip_counter = (bool) $this->config['disableCounterAppealMails'];
+        $skip_appeal = (bool) $this->config['disableAppealMails'];
+        if (!$skip_counter && !$skip_appeal) {
             return;
         }
 
         $app = App::i();
-        $skip_appeal = function ($registration, &$enable) {
-            if ($registration instanceof Registration && $registration->opportunity && $registration->opportunity->isAppealPhase) {
+        $cancel = function ($registration, &$enable) use ($skip_counter, $skip_appeal) {
+            $opportunity = $registration instanceof Registration ? $registration->opportunity : null;
+            if (!$opportunity) {
+                return;
+            }
+            if ($skip_counter && self::meta($opportunity, 'isCounterAppealPhase')) {
+                $enable = false;
+            } elseif ($skip_appeal && $opportunity->isAppealPhase) {
                 $enable = false;
             }
         };
 
-        $app->hook('sendMailNotification.registrationStart:beforeEnqueue', function (&$registration, &$template, &$enable) use ($skip_appeal) {
-            $skip_appeal($registration, $enable);
+        $app->hook('sendMailNotification.registrationStart:beforeEnqueue', function (&$registration, &$template, &$enable) use ($cancel) {
+            $cancel($registration, $enable);
         });
-        $app->hook('sendMailNotification.registrationSend', function (&$registration, &$template, &$enable) use ($skip_appeal) {
-            $skip_appeal($registration, $enable);
+        $app->hook('sendMailNotification.registrationSend', function (&$registration, &$template, &$enable) use ($cancel) {
+            $cancel($registration, $enable);
         });
     }
 

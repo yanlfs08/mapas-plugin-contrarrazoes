@@ -412,7 +412,7 @@ Por isso, toda instalação ou atualização do plugin exige **gerar a imagem de
    docker compose exec mapasculturais ls /var/www/src/plugins
    # deve listar: Contrarrazoes
    docker compose exec mapasculturais grep "VERSION =" /var/www/src/plugins/Contrarrazoes/Plugin.php
-   # const VERSION = '1.4.2';
+   # const VERSION = '1.4.3';
    ```
 
 2. **Metadados registrados.** A API de descrição das oportunidades passa a listar os campos do plugin:
@@ -440,6 +440,9 @@ Para mudar o comportamento padrão, informe `config` na ativação do plugin:
             // até o fim do prazo de contrarrazões (padrão: true)
             'lockAppealJudgement' => true,
 
+            // não envia os e-mails automáticos do Mapas para as contrarrazões (padrão: true)
+            'disableCounterAppealMails' => true,
+
             // não envia os e-mails automáticos do Mapas para os recursos (padrão: true)
             'disableAppealMails' => true,
 
@@ -454,7 +457,10 @@ Para mudar o comportamento padrão, informe `config` na ativação do plugin:
 | Chave | Padrão | Efeito |
 |---|---|---|
 | `lockAppealJudgement` | `true` | Com `false`, a comissão julga os recursos e o gestor publica o resultado mesmo com o prazo de contrarrazões aberto. |
-| `disableAppealMails` | `true` | Cancela os e-mails automáticos do módulo MailNotification quando o candidato abre um recurso (*start_data_collection_phase*) ou o envia. Os e-mails das inscrições comuns e das contrarrazões continuam. Com `false`, o Mapas volta a enviar esses e-mails. |
+| `disableCounterAppealMails` | `true` | Cancela os e-mails automáticos do módulo MailNotification quando o candidato abre (*start_registration*) ou envia (*send_registration*) uma contrarrazão. Sem isso, o Mapas trata a contrarrazão como uma inscrição comum e manda "inscrição iniciada/enviada". Com `false`, esses e-mails voltam. |
+| `disableAppealMails` | `true` | Cancela os e-mails automáticos do MailNotification quando o candidato abre um recurso (*start_data_collection_phase*) ou o envia. Com `false`, esses e-mails voltam. |
+
+Os e-mails das inscrições comuns do edital não são afetados por nenhuma das duas opções.
 | `publicFieldTypes` | lista acima | Tipos de campo do formulário de recurso que aparecem como opção de publicação, e tipos de campo da contrarrazão mostrados ao autor do recurso. Não acrescente tipos com dados pessoais. |
 
 A configuração `defaultFieldTitle` das versões anteriores foi removida na 1.3.0, porque o plugin não cria mais o campo do formulário.
@@ -639,8 +645,8 @@ As regras que dependem de data (prazo e trava) **não** ficam em hooks `can(...)
 
 | Função | O que faz |
 |---|---|
-| `__construct(array $config)` | Aplica os valores padrão de `publicFieldTypes`, `lockAppealJudgement` e `disableAppealMails`. |
-| `initMailHooks()` | Com `disableAppealMails` ligado, cancela os e-mails do MailNotification (abertura e envio) das inscrições de fases de recurso. |
+| `__construct(array $config)` | Aplica os valores padrão de `publicFieldTypes`, `lockAppealJudgement`, `disableCounterAppealMails` e `disableAppealMails`. |
+| `initMailHooks()` | Cancela os e-mails do MailNotification (abertura e envio) das contrarrazões e dos recursos, conforme `disableCounterAppealMails` e `disableAppealMails`. |
 | `_init()` | Verifica a versão do Mapas, carrega o CSS e registra os hooks (permissões, endpoints, trava, telas), o redirecionamento da URL da fase, o redirecionamento da ficha da contrarrazão e a exclusão em cascata. |
 | `register()` | Registra os metadados da tabela [Metadados registrados](#metadados-registrados). |
 | `checkMapasVersion()` | Lê o `version.txt` do Mapas e grava um aviso no log se a versão não for 7.8.x. |

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.3 - 2026-11-25
+
+- As contrarrazões não disparam mais e-mails automáticos do Mapas.
+  - A fase de contrarrazões é uma oportunidade de primeiro nível, por isso o módulo MailNotification mandava ao candidato "inscrição iniciada" (*start_registration*) e "inscrição enviada" (*send_registration*) a cada contrarrazão.
+  - A nova configuração `disableCounterAppealMails` (padrão `true`) cancela os dois.
+  - Os e-mails das inscrições comuns continuam.
+
 ## 1.4.2 - 2026-11-25
 
 - Os recursos não disparam mais e-mails automáticos do Mapas.
