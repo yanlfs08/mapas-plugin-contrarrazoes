@@ -76,7 +76,7 @@ $this->import('
                         </div>
                         <p class="counter-appeal-config__muted"><?= i::__('Sugestão: comece depois do fim do prazo de recurso e termine antes do início da resposta do recurso.') ?></p>
                         <mc-alert v-if="item.appealPhase.judgementLocked" type="warning">
-                            <?= i::__('O julgamento dos recursos desta fase fica travado até o término do prazo de contrarrazões. Sem prazo definido, o julgamento continua travado.') ?>
+                            <?= i::__('Enquanto o prazo de contrarrazões não terminar, o julgamento dos recursos desta fase fica travado e o resultado da etapa de recurso não pode ser publicado. Sem prazo definido, os dois continuam travados.') ?>
                         </mc-alert>
                     </section>
 
@@ -87,7 +87,7 @@ $this->import('
 
                     <section class="counter-appeal-config__section">
                         <h5 class="bold"><?= i::__('Campos do recurso visíveis para os candidatos') ?></h5>
-                        <p class="counter-appeal-config__muted"><?= i::__('Marque o que os candidatos poderão ler de cada recurso. O número da inscrição e o nome do proponente são sempre exibidos.') ?></p>
+                        <p class="counter-appeal-config__muted"><?= i::__('Marque o que os candidatos poderão ler de cada recurso. O número da inscrição é sempre exibido.') ?></p>
                         <mc-alert type="helper">
                             <?= i::__('Por proteção de dados pessoais (LGPD), campos de CPF, CNPJ, e-mail, telefone, endereço, dados bancários, pessoas, agentes e espaços não podem ser publicados.') ?>
                         </mc-alert>
@@ -103,36 +103,41 @@ $this->import('
                     </section>
 
                     <section class="counter-appeal-config__section">
-                        <h5 class="bold"><?= i::__('Resposta às contrarrazões') ?></h5>
-                        <p class="counter-appeal-config__muted">
-                            <?= i::__('Depois do prazo de contrarrazões, o avaliador do recurso responde a cada contrarrazão na tela de avaliação. A resposta é obrigatória para finalizar o recurso e fica visível para o autor da contrarrazão e para o autor do recurso depois da publicação do resultado da etapa de recurso.') ?>
+                        <h5 class="bold"><?= i::__('Publicidade') ?></h5>
+                        <label class="counter-appeal-config__option">
+                            <input type="checkbox" v-model="item.form.counterAppealShowNames">
+                            <?= i::__('Exibir o nome dos proponentes nos recursos e nas contrarrazões') ?>
+                        </label>
+                        <p class="counter-appeal-config__muted counter-appeal-config__hint">
+                            <?= i::__('Desmarcado, os candidatos veem apenas o número da inscrição. A gestão e a comissão sempre veem o nome.') ?>
                         </p>
                         <label class="counter-appeal-config__option">
-                            <input type="checkbox" v-model="item.form.counterAppealResponseClassify" @change="onClassifyChange(item)">
-                            <?= i::__('Classificar a contrarrazão na resposta') ?>
+                            <input type="checkbox" v-model="item.form.counterAppealVisibleToAppellant">
+                            <?= i::__('O autor do recurso pode ver as contrarrazões que o recurso dele recebeu') ?>
                         </label>
-                        <p v-if="!item.form.counterAppealResponseClassify" class="counter-appeal-config__muted">
-                            <?= i::__('A resposta terá apenas o texto da fundamentação.') ?>
+                        <p class="counter-appeal-config__muted counter-appeal-config__hint">
+                            <?= i::__('As contrarrazões enviadas aparecem para ele na linha do tempo da inscrição, junto do "Seu recurso". Só são exibidos os campos de tipos publicáveis e os anexos.') ?>
                         </p>
-                        <div v-else class="counter-appeal-config__results">
-                            <p class="counter-appeal-config__muted"><?= i::__('Opções que o avaliador escolhe ao responder (até 10):') ?></p>
-                            <div v-for="(option, index) in item.form.counterAppealResponseResults" :key="index" class="counter-appeal-config__result">
-                                <input type="text" v-model="item.form.counterAppealResponseResults[index]" maxlength="100">
-                                <button class="button button--text button--sm counter-appeal-config__delete" @click="removeResultOption(item, index)" title="<?= i::esc_attr__('Remover opção') ?>">
-                                    <mc-icon name="trash"></mc-icon>
-                                </button>
-                            </div>
-                            <button v-if="item.form.counterAppealResponseResults.length < 10" class="button button--text button--sm" @click="addResultOption(item)">
-                                <mc-icon name="add"></mc-icon> <?= i::__('Adicionar opção') ?>
-                            </button>
-                            <p class="counter-appeal-config__muted"><?= i::__('Mudar as opções não altera as respostas já registradas.') ?></p>
-                        </div>
                     </section>
 
+                    <section class="counter-appeal-config__section">
+                        <h5 class="bold"><?= i::__('Formulário da contrarrazão') ?></h5>
+                        <mc-alert v-if="!item.formFieldsCount" type="warning">
+                            <?= i::__('O formulário da contrarrazão ainda não tem campos. Crie os campos em "Configurar formulário" antes de abrir o prazo: sem eles, os candidatos não conseguem apresentar contrarrazões.') ?>
+                        </mc-alert>
+                        <p v-else class="counter-appeal-config__muted">
+                            {{ item.formFieldsCount }} <?= i::__('campo(s) no formulário.') ?>
+                            <?= i::__('Depois de alterar o formulário, recarregue esta página para atualizar a contagem.') ?>
+                        </p>
+                    </section>
+
+                    <p class="counter-appeal-config__muted counter-appeal-config__autosave">
+                        <?= i::__('As alterações desta seção são salvas automaticamente.') ?>
+                        <span v-if="item.saving"><?= i::__('Salvando...') ?></span>
+                        <span v-else-if="item.saved"><?= i::__('Salvo.') ?></span>
+                    </p>
+
                     <div class="counter-appeal-config__actions">
-                        <button class="button button--primary" :disabled="item.saving" @click="saveConfig(item)">
-                            <?= i::__('Salvar configurações') ?>
-                        </button>
                         <a :href="item.counterEntity.formBuilderUrl" class="button button--icon button--primary button--md" target="_blank">
                             <?= i::__('Configurar formulário') ?> <mc-icon name="external" size="sm"></mc-icon>
                         </a>
@@ -162,7 +167,6 @@ $this->import('
                                         <th><?= i::__('Recurso contestado') ?></th>
                                         <th><?= i::__('Situação') ?></th>
                                         <th><?= i::__('Enviada em') ?></th>
-                                        <th><?= i::__('Resposta') ?></th>
                                         <th></th>
                                     </tr>
                                 </thead>
@@ -173,17 +177,6 @@ $this->import('
                                         <td>{{ ca.targetNumber }} <small class="counter-appeal-config__muted">{{ ca.targetAgentName }}</small></td>
                                         <td>{{ statusLabel(ca.status) }}</td>
                                         <td>{{ formatDate(ca.sentTimestamp) }}</td>
-                                        <td>
-                                            {{ responseLabel(ca) }}
-                                            <details v-if="ca.responses?.length" class="counter-appeal-config__response">
-                                                <summary><?= i::__('ver') ?></summary>
-                                                <div v-for="(response, index) in ca.responses" :key="index">
-                                                    <small class="counter-appeal-config__muted">{{ response.evaluatorName }} · {{ formatDate(response.updated) }}</small>
-                                                    <p v-if="response.result"><strong>{{ response.result }}</strong></p>
-                                                    <p class="counter-appeal-list__value">{{ response.text }}</p>
-                                                </div>
-                                            </details>
-                                        </td>
                                         <td><a :href="ca.singleUrl" target="_blank"><?= i::__('Ver') ?></a></td>
                                     </tr>
                                 </tbody>

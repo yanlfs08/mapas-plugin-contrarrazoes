@@ -3,13 +3,10 @@ use MapasCulturais\i;
 
 return [
     'Fase de contrarrazões criada com sucesso' => i::__('Fase de contrarrazões criada com sucesso'),
-    'Configurações salvas' => i::__('Configurações salvas'),
+    'Modificações salvas' => i::__('Modificações salvas'),
     'Fase de contrarrazões excluída' => i::__('Fase de contrarrazões excluída'),
     'Enviada' => i::__('Enviada'),
     'Rascunho' => i::__('Rascunho'),
-    'Pendente' => i::__('Pendente'),
-    'Respondida' => i::__('Respondida'),
-    'Informe ao menos uma opção' => i::__('Informe ao menos uma opção de classificação ou desmarque a classificação da resposta.'),
     'texto' => i::__('texto'),
     'texto longo' => i::__('texto longo'),
     'seleção' => i::__('seleção'),

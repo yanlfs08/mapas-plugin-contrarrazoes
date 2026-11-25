@@ -1,15 +1,18 @@
 # Changelog
 
-## 1.2.0 - 2026-11-24
+## 1.3.0 - 2026-11-25
 
-- **Resposta às contrarrazões.** Na tela de avaliação do recurso, o avaliador designado para o recurso responde a cada contrarrazão enviada, depois do fim do prazo de contrarrazões: escolhe a classificação e escreve a fundamentação. Cada contrarrazão mostra o selo *Pendente* ou *Respondida*. A resposta pode ser editada até o avaliador finalizar a avaliação.
-- **Resposta obrigatória.** Sem responder a todas as contrarrazões, o avaliador não finaliza a avaliação nem decide pelo chat. Ninguém defere, indefere, invalida ou põe em suplência o recurso (inclusive pela aplicação em lote da avaliação contínua), e o resultado da etapa de recurso não é publicado. Configuração `requireCounterAppealResponse` (padrão `true`).
-- **Classificação configurável.** O acordeão *Contrarrazões* ganhou a seção *Resposta às contrarrazões*: o gestor mantém o padrão (*Acolhida*, *Parcialmente acolhida*, *Não acolhida*), troca as opções (até 10) ou deixa a resposta só em texto. Configuração `defaultResponseResults`.
-- **Publicidade.** Depois da publicação do resultado da etapa de recurso, a resposta aparece para o autor da contrarrazão (faixa da contrarrazão e modal da linha do tempo) e para o autor do recurso contestado (modal da linha do tempo, no *Seu recurso*). O nome do avaliador não é exibido aos candidatos.
-- O gestor vê as respostas de todos os avaliadores na tabela de contrarrazões recebidas.
-- A aplicação em lote da avaliação contínua e a publicação do resultado da etapa de recurso passam a respeitar também a trava do prazo de contrarrazões, com uma mensagem clara antes de começar.
-- Novo endpoint `POST /registration/saveCounterAppealResponse/{id}` e novos metadados `counterAppealResponses` (privado) e `counterAppealResponseResults` na fase de contrarrazões. Não precisa de db-update.
-- Testes: 70 verificações de API (27 novas).
+Baseada na 1.1.0. **Não inclui** a resposta do avaliador às contrarrazões da 1.2.0.
+
+- **Contrarrazões visíveis ao autor do recurso (configurável).** Nova opção *O autor do recurso pode ver as contrarrazões que o recurso dele recebeu* (metadado `counterAppealVisibleToAppellant`, padrão desligado). Ligada, as contrarrazões enviadas aparecem no modal da linha do tempo, junto do *Seu recurso*, com o botão **Exibir contrarrazão**. Só vão os campos de tipos publicáveis (LGPD) e os anexos, que ele pode baixar. Desligada, o autor do recurso não abre a contrarrazão nem os anexos (antes ele conseguia abrir a ficha pelo link direto).
+- **Nome dos proponentes configurável.** Nova opção *Exibir o nome dos proponentes nos recursos e nas contrarrazões* (metadado `counterAppealShowNames`, padrão ligado, como antes). Desligada, os candidatos veem só o número da inscrição (lista de recursos, contrarrazões recebidas e faixa do formulário). Gestão e comissão sempre veem o nome.
+- **Formulário não é mais criado automaticamente.** A fase de contrarrazões nasce só com a etapa vazia; o gestor cria os campos em *Configurar formulário*. Enquanto o formulário não tiver campos, o acordeão mostra um aviso e ninguém consegue iniciar uma contrarrazão. A configuração `defaultFieldTitle` foi removida.
+- **Sem tela separada para quem enviou.** A contrarrazão enviada aparece no próprio modal da linha do tempo, pelo botão **Exibir contrarrazão** (no lugar do link *Ver contrarrazão enviada*). A ficha da contrarrazão (inclusive a página para onde o Mapas leva depois do envio) devolve o autor à linha do tempo, com o modal aberto e a contrarrazão expandida (`&contrarrazao={id}`). Gestão e comissão continuam vendo a ficha.
+- **Sem botão "Salvar configurações".** O acordeão *Contrarrazões* salva sozinho (datas, campos visíveis e publicidade), como os demais campos da etapa de recurso, e avisa *Modificações salvas*.
+- **Prazo de contrarrazões aberto impede a publicação do resultado da etapa de recurso**, pelo botão de publicar e pela publicação agendada (job `PublishResult`). Sem prazo definido, também não publica. A aplicação em lote da avaliação contínua respeita a trava com mensagem clara antes de começar.
+- **Tela do avaliador:** o bloco *Contrarrazões apresentadas a este recurso* ganhou uma linha que diz o que os candidatos veem neste edital (se os nomes aparecem e se o autor do recurso lê as contrarrazões). A comissão continua vendo nomes e todos os campos.
+- README reescrito, com capturas de cada tela (gestor, candidato, autor do recurso e avaliador) nos modos com e sem nomes.
+- Testes: roteiro externo com 28 verificações de API e conferência da interface no navegador. Os roteiros de `tests/` ainda são os da 1.1.0.
 
 ## 1.1.0 - 2026-11-18
 

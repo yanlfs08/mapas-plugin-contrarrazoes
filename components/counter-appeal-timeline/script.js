@@ -46,18 +46,6 @@ app.component('counter-appeal-timeline', {
             return (this.data?.appeals || []).flatMap((appeal) => appeal.myCounterAppeals || []);
         },
 
-        // respostas publicadas: às contrarrazões desta inscrição e às contrarrazões contra o recurso dela
-        responsesCount() {
-            if (!this.data?.resultPublished) {
-                return 0;
-            }
-            return (this.data.appeals || []).reduce((total, appeal) => {
-                const mine = (appeal.myCounterAppeals || []).filter((ca) => (ca.responses || []).length).length;
-                const received = (appeal.receivedCounterAppeals || []).filter((ca) => (ca.responses || []).length).length;
-                return total + mine + received;
-            }, 0);
-        },
-
         // recursos de outras pessoas que esta inscrição ainda não contestou
         availableCount() {
             return (this.data?.appeals || []).filter((appeal) => !appeal.isMine && !(appeal.myCounterAppeals || []).length).length;
