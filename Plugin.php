@@ -26,7 +26,7 @@ use MapasCulturais\i;
  */
 class Plugin extends \MapasCulturais\Plugin
 {
-    const VERSION = '1.4.5';
+    const VERSION = '1.5.0';
 
     /** Faixa de versões do Mapas Culturais em que o plugin foi testado */
     const TESTED_MAPAS_VERSIONS = '7.8';
@@ -271,6 +271,8 @@ class Plugin extends \MapasCulturais\Plugin
             ],
         ]);
 
+        // obsoleto desde a 1.5.0: os campos visíveis do recurso não são mais configuráveis
+        // (todos os publicáveis, veja getPublicAppealFields). Fica registrado só por compatibilidade.
         $this->registerOpportunityMetadata('counterAppealPublicFields', [
             'label' => i::__('Campos do recurso visíveis aos candidatos'),
             'type' => 'json',
@@ -646,6 +648,22 @@ class Plugin extends \MapasCulturais\Plugin
     }
 
     /**
+     * Campos do recurso exibidos aos candidatos: todos os do formulário de recurso, inclusive anexos,
+     * menos os tipos com dados pessoais (LGPD, veja PUBLIC_FIELD_TYPES). Não é configurável desde a 1.5.0.
+     *
+     * @return string[] nomes dos campos (`field_N`) e grupos de anexo (`rfc_N`)
+     */
+    function getPublicAppealFields(Opportunity $counter): array
+    {
+        $appeal_phase = $this->getAppealPhase($counter);
+        if (!$appeal_phase) {
+            return [];
+        }
+
+        return array_map(fn ($f) => $f['name'], $this->getPhaseFormFields($appeal_phase, true));
+    }
+
+    /**
      * Campos do formulário de uma fase, na ordem de exibição
      *
      * @return array lista de ['name', 'title', 'type', 'isFile', 'config']
@@ -806,7 +824,7 @@ class Plugin extends \MapasCulturais\Plugin
         $data['@entityType'] = 'opportunity';
         $data['isRegistrationOpen'] = $counter->isRegistrationOpen();
         $data['counterAppealEligibility'] = self::ELIGIBILITY_SAME_PHASE; // fixo desde a 1.1.0
-        $data['counterAppealPublicFields'] = array_values((array) Plugin::meta($counter, 'counterAppealPublicFields'));
+        $data['counterAppealPublicFields'] = $this->getPublicAppealFields($counter); // fixo desde a 1.5.0
         $data['counterAppealShowNames'] = $this->showNames($counter);
         $data['counterAppealVisibleToAppellant'] = $this->isVisibleToAppellant($counter);
         // o formulário não é mais criado automaticamente (1.3.0): o gestor monta pelo "Configurar formulário"
@@ -951,17 +969,12 @@ class Plugin extends \MapasCulturais\Plugin
             }
 
             $counter->checkPermission('@control');
-            $appeal_phase = $self->getAppealPhase($counter);
             $data = $this->data;
 
             // a elegibilidade não é mais configurável (sempre a mesma etapa do recurso):
-            // counterAppealEligibility enviado por clientes antigos é ignorado
-
-            if (array_key_exists('counterAppealPublicFields', $data)) {
-                $allowed = array_map(fn ($f) => $f['name'], $self->getPhaseFormFields($appeal_phase, true));
-                $requested = array_values(array_filter((array) ($data['counterAppealPublicFields'] ?: []), 'is_string'));
-                $counter->counterAppealPublicFields = array_values(array_intersect($requested, $allowed));
-            }
+            // counterAppealEligibility enviado por clientes antigos é ignorado.
+            // Os campos visíveis do recurso também não são mais configuráveis (1.5.0):
+            // counterAppealPublicFields enviado por clientes antigos é ignorado
 
             foreach (['counterAppealShowNames', 'counterAppealVisibleToAppellant'] as $prop) {
                 if (array_key_exists($prop, $data)) {
@@ -1063,7 +1076,7 @@ class Plugin extends \MapasCulturais\Plugin
                 && $appeal instanceof Registration
                 && $appeal->opportunity->equals($appeal_phase)
                 && $appeal->status > 0
-                && in_array($file->group, (array) Plugin::meta($counter, 'counterAppealPublicFields'), true)
+                && in_array($file->group, $self->getPublicAppealFields($counter), true)
                 && $self->isCounterAppealListVisible($counter)
                 && ($counter->canUser('@control') || $self->getUserCandidateRegistrations($counter));
 
@@ -1189,7 +1202,6 @@ class Plugin extends \MapasCulturais\Plugin
             $counter->isCounterAppealPhase = true;
             $counter->counterAppealOf = $appeal_phase->id;
             $counter->counterAppealEligibility = self::ELIGIBILITY_SAME_PHASE; // fixo desde a 1.1.0
-            $counter->counterAppealPublicFields = [];
             $counter->counterAppealShowNames = true;
             $counter->counterAppealVisibleToAppellant = false;
             $counter->save(true);
@@ -1551,11 +1563,6 @@ class Plugin extends \MapasCulturais\Plugin
                 'sentAppeals' => count($this->getSentAppeals($appeal_phase)),
                 'judgementLocked' => $this->isAppealJudgementLocked($appeal_phase),
             ],
-            'publicFieldOptions' => array_values(array_map(fn ($f) => [
-                'name' => $f['name'],
-                'title' => $f['title'],
-                'type' => $f['type'],
-            ], $this->getPhaseFormFields($appeal_phase, true))),
             'counter' => null,
             'counterAppeals' => [],
             // 1.4.0: recursos enviados, para o acompanhamento na aba Inscrições e Resultados
@@ -1693,7 +1700,7 @@ class Plugin extends \MapasCulturais\Plugin
             return $data;
         }
 
-        $public_fields = array_values((array) Plugin::meta($counter, 'counterAppealPublicFields'));
+        $public_fields = $this->getPublicAppealFields($counter);
         $show_names = $this->showNames($counter) || $counter->canUser('@control');
         $visible_to_appellant = $this->isVisibleToAppellant($counter);
         // campos da contrarrazão que o autor do recurso pode ler: só os tipos publicáveis (LGPD) e anexos

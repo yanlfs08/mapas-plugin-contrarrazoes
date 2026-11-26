@@ -14,7 +14,7 @@ Instalação: este repositório inteiro vira a pasta `src/plugins/Contrarrazoes`
 - **Uma contrarrazão por recurso** por inscrição. O mesmo candidato pode contestar vários recursos.
 - **Autor não contesta o próprio recurso.**
 - **Trava do julgamento:** a comissão não finaliza a avaliação, ninguém defere/indefere o recurso e o resultado da etapa de recurso não é publicado (botão, `applyEvaluationsContinuous` e job `PublishResult`, via `entity(Opportunity).publishRegistrations:before`) antes do fim do prazo de contrarrazões. Sem prazo definido, fica travado.
-- **Publicidade:** o gestor escolhe quais campos do formulário de recurso ficam visíveis. Tipos com dados pessoais nunca são publicáveis (LGPD); veja `PUBLIC_FIELD_TYPES`.
+- **Publicidade (1.5.0):** os candidatos veem **todos** os campos e anexos do formulário de recurso; não é configurável (`Plugin::getPublicAppealFields()`). Tipos com dados pessoais nunca são publicáveis (LGPD); veja `PUBLIC_FIELD_TYPES`. O metadado `counterAppealPublicFields` continua registrado só por compatibilidade e é ignorado.
 - **Nome dos proponentes (1.3.0):** configurável (`counterAppealShowNames`, padrão exibe). Gestão e comissão sempre veem.
 - **Autor do recurso vê as contrarrazões (1.3.0):** configurável (`counterAppealVisibleToAppellant`, padrão não). Só campos publicáveis + anexos; permissão `view|viewPrivateFiles` (nunca `viewPrivateData`) no hook próprio.
 - **Formulário (1.3.0):** não é criado automaticamente; sem campos, `createCounterAppealRegistration` recusa.
@@ -34,7 +34,7 @@ Instalação: este repositório inteiro vira a pasta `src/plugins/Contrarrazoes`
 - **Contrarrazão** = `Registration` na fase de contrarrazões, com os metadados `counterAppealTarget` (id do recurso) e `counterAppealAuthorNumber` (número da inscrição do autor).
 - **Endpoints** (hooks em controladores existentes; no JS use `entity.invoke(action, data)`):
   - `POST opportunity.createCounterAppealPhase/{id da fase de recurso}`
-  - `POST opportunity.saveCounterAppealConfig/{id da fase de contrarrazões}` (datas e campos públicos)
+  - `POST opportunity.saveCounterAppealConfig/{id da fase de contrarrazões}` (datas e publicidade)
   - `POST opportunity.deleteCounterAppealPhase/{id}`
   - `POST opportunity.createCounterAppealRegistration/{id}` (`appeal_registration_id`, `author_registration_id`)
   - `GET opportunity.counterAppealFile/{id}/file:{fileId}` (download dos anexos públicos do recurso)
