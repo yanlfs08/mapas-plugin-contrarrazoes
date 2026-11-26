@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.5 - 2026-11-26
+
+- O gestor do edital (administrador da oportunidade que não é o dono) consegue criar a fase de contrarrazões.
+  - Antes só o administrador do sistema conseguia: a fase nova recebe o mesmo agente dono do edital, e para o gestor o Mapas transformava isso num pedido de troca de dono, deixando o dono vazio (`null value in column "agent_id"`).
+  - A permissão continua sendo `@control` na fase de recurso, checada antes; só a gravação roda com o controle de acesso desligado.
+
 ## 1.4.4 - 2026-11-26
 
 - As contrarrazões não aparecem mais em **Minhas inscrições** no painel do candidato.

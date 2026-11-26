@@ -26,7 +26,7 @@ use MapasCulturais\i;
  */
 class Plugin extends \MapasCulturais\Plugin
 {
-    const VERSION = '1.4.4';
+    const VERSION = '1.4.5';
 
     /** Faixa de versões do Mapas Culturais em que o plugin foi testado */
     const TESTED_MAPAS_VERSIONS = '7.8';
@@ -1157,15 +1157,23 @@ class Plugin extends \MapasCulturais\Plugin
 
     /**
      * Cria a fase de contrarrazões (sem campos no formulário)
+     *
+     * Quem controla a fase de recurso pode criar, inclusive o gestor que não é dono do edital.
+     * A gravação roda com o controle de acesso desligado porque o dono da fase é o mesmo agente
+     * dono do edital: para o gestor, `_saveOwnerAgent` exigiria `modify` nesse agente e viraria
+     * um pedido de troca de dono (RequestChangeOwnership), deixando `agent_id` nulo no INSERT.
      */
     function createCounterAppealPhase(Opportunity $appeal_phase): Opportunity
     {
         $app = App::i();
+        $appeal_phase->checkPermission('@control');
+
         $first_phase = $appeal_phase->parent->firstPhase;
         $class_name = $first_phase->getSpecializedClassName();
 
         $conn = $app->em->getConnection();
         $conn->beginTransaction();
+        $app->disableAccessControl();
 
         try {
             /** @var Opportunity $counter */
@@ -1203,7 +1211,12 @@ class Plugin extends \MapasCulturais\Plugin
             }
             $app->em->clear();
             throw $e;
+        } finally {
+            $app->enableAccessControl();
         }
+
+        // o gestor passa a enxergar a fase nova (permissionCacheUsers inclui os gestores do edital)
+        $counter->enqueueToPCacheRecreation();
 
         return $counter;
     }
