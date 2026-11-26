@@ -22,7 +22,6 @@ app.component('counter-appeal-config', {
         // fase de recurso criada depois do carregamento da página: ainda sem dados do servidor
         const item = this.buildItem(found || {
             appealPhase: { id: this.appealPhaseId },
-            publicFieldOptions: [],
             counter: null,
             counterAppeals: [],
         });
@@ -69,7 +68,6 @@ app.component('counter-appeal-config', {
 
         formFrom(counter) {
             return {
-                counterAppealPublicFields: [...(counter?.counterAppealPublicFields || [])],
                 counterAppealShowNames: counter ? counter.counterAppealShowNames !== false : true,
                 counterAppealVisibleToAppellant: !!counter?.counterAppealVisibleToAppellant,
             };
@@ -116,7 +114,6 @@ app.component('counter-appeal-config', {
                 return null;
             }
             return {
-                counterAppealPublicFields: item.form.counterAppealPublicFields.length ? item.form.counterAppealPublicFields : '',
                 counterAppealShowNames: item.form.counterAppealShowNames ? 1 : 0,
                 counterAppealVisibleToAppellant: item.form.counterAppealVisibleToAppellant ? 1 : 0,
                 registrationFrom: counter.registrationFrom ? counter.registrationFrom.sql() : '',
@@ -176,25 +173,6 @@ app.component('counter-appeal-config', {
             }
             const date = new McDate(value);
             return `${date.date('2-digit year')} ${date.time('2-digit')}`;
-        },
-
-        fieldTypeLabel(type) {
-            const labels = {
-                'text': 'texto',
-                'textarea': 'texto longo',
-                'select': 'seleção',
-                'checkboxes': 'múltipla escolha',
-                'checkbox': 'caixa de seleção',
-                'number': 'número',
-                'currency': 'moeda',
-                'date': 'data',
-                'url': 'link',
-                'links': 'links',
-                'custom-table': 'tabela',
-                'municipio': 'município',
-                'file': 'anexo',
-            };
-            return labels[type] ? this.text(labels[type]) : type;
         },
     },
 });

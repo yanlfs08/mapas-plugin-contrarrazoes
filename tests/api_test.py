@@ -66,11 +66,12 @@ def main(path):
     check('datas invertidas são rejeitadas', code == 400, (code, body))
 
     fields = sc['appealFields']
+    # 1.5.0: os campos visíveis não são configuráveis; counterAppealPublicFields enviado é ignorado
     code, body = gestor.post('opportunity', 'saveCounterAppealConfig', cid, {
-        'counterAppealPublicFields': [fields['text'], fields['cpf'], fields['file'], 'campo_inexistente'],
+        'counterAppealPublicFields': [fields['text']],
         'registrationFrom': when(hours=-1), 'registrationTo': when(days=3)})
     check('gestor salva configuração', code == 200, (code, body))
-    check('CPF e campos inexistentes não podem ser públicos',
+    check('todos os campos do recurso são públicos, menos CPF (LGPD)',
           sorted(body.get('counterAppealPublicFields', [])) == sorted([fields['text'], fields['file']]),
           body.get('counterAppealPublicFields'))
     check('prazo aberto', body.get('isRegistrationOpen') is True)

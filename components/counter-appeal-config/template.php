@@ -85,22 +85,9 @@ $this->import('
                         <?= i::__('O autor de um recurso não pode contestar o próprio recurso, e cada inscrição apresenta no máximo uma contrarrazão por recurso.') ?>
                     </p>
 
-                    <section class="counter-appeal-config__section">
-                        <h5 class="bold"><?= i::__('Campos do recurso visíveis para os candidatos') ?></h5>
-                        <p class="counter-appeal-config__muted"><?= i::__('Marque o que os candidatos poderão ler de cada recurso. O número da inscrição é sempre exibido.') ?></p>
-                        <mc-alert type="helper">
-                            <?= i::__('Por proteção de dados pessoais (LGPD), campos de CPF, CNPJ, e-mail, telefone, endereço, dados bancários, pessoas, agentes e espaços não podem ser publicados.') ?>
-                        </mc-alert>
-                        <div v-if="item.publicFieldOptions.length" class="counter-appeal-config__fields">
-                            <label v-for="field in item.publicFieldOptions" :key="field.name" class="counter-appeal-config__option">
-                                <input type="checkbox" :value="field.name" v-model="item.form.counterAppealPublicFields">
-                                {{ field.title }} <small class="counter-appeal-config__muted">({{ fieldTypeLabel(field.type) }})</small>
-                            </label>
-                        </div>
-                        <p v-else class="counter-appeal-config__muted">
-                            <?= i::__('O formulário de recurso não tem campos que possam ser publicados. Se você acabou de configurar o formulário do recurso, recarregue a página.') ?>
-                        </p>
-                    </section>
+                    <p class="counter-appeal-config__muted">
+                        <?= i::__('Os candidatos veem todos os campos e anexos do formulário de recurso, menos os de dados pessoais (CPF, CNPJ, e-mail, telefone, endereço, dados bancários, pessoas, agentes e espaços), por proteção de dados (LGPD).') ?>
+                    </p>
 
                     <section class="counter-appeal-config__section">
                         <h5 class="bold"><?= i::__('Publicidade') ?></h5>

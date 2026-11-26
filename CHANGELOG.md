@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.0 - 2026-11-26
+
+- Removida a configuração **Campos do recurso visíveis para os candidatos**.
+  - Os candidatos passam a ver todos os campos e anexos do formulário de recurso, menos os tipos com dados pessoais (CPF, CNPJ, e-mail, telefone, endereço, dados bancários, pessoas, agentes e espaços), que continuam protegidos por LGPD.
+  - Vale também para fases já criadas: a seleção gravada antes é ignorada.
+  - O metadado `counterAppealPublicFields` continua registrado só por compatibilidade; `saveCounterAppealConfig` ignora o valor enviado.
+
 ## 1.4.5 - 2026-11-26
 
 - O gestor do edital (administrador da oportunidade que não é o dono) consegue criar a fase de contrarrazões.
