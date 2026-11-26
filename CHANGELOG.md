@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.4 - 2026-11-26
+
+- As contrarrazões não aparecem mais em **Minhas inscrições** no painel do candidato.
+  - A fase de contrarrazões é uma oportunidade de primeiro nível, por isso cada contrarrazão aparecia como uma inscrição comum nas abas *Não enviadas*, *Enviadas* e *Com permissão*, no aviso de rascunhos e nas últimas inscrições do painel inicial.
+  - O plugin passa a excluir as fases de contrarrazões das consultas à API de inscrições que não filtram por oportunidade nem por id. Consultas por oportunidade ou por id continuam iguais.
+
 ## 1.4.3 - 2026-11-25
 
 - As contrarrazões não disparam mais e-mails automáticos do Mapas.

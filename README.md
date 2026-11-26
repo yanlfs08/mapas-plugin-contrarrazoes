@@ -412,7 +412,7 @@ Por isso, toda instalação ou atualização do plugin exige **gerar a imagem de
    docker compose exec mapasculturais ls /var/www/src/plugins
    # deve listar: Contrarrazoes
    docker compose exec mapasculturais grep "VERSION =" /var/www/src/plugins/Contrarrazoes/Plugin.php
-   # const VERSION = '1.4.3';
+   # const VERSION = '1.4.4';
    ```
 
 2. **Metadados registrados.** A API de descrição das oportunidades passa a listar os campos do plugin:

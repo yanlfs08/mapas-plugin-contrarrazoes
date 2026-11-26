@@ -26,7 +26,7 @@ use MapasCulturais\i;
  */
 class Plugin extends \MapasCulturais\Plugin
 {
-    const VERSION = '1.4.3';
+    const VERSION = '1.4.4';
 
     /** Faixa de versões do Mapas Culturais em que o plugin foi testado */
     const TESTED_MAPAS_VERSIONS = '7.8';
@@ -110,6 +110,40 @@ class Plugin extends \MapasCulturais\Plugin
     }
 
     /* ---------------------------------------------------------------------
+     * Painel ("Minhas inscrições")
+     * ------------------------------------------------------------------- */
+
+    /**
+     * Esconde as contrarrazões das listagens de inscrições do painel.
+     *
+     * A fase de contrarrazões é uma oportunidade de primeiro nível, então cada contrarrazão
+     * aparecia como uma inscrição comum em "Minhas inscrições" (abas, contador de rascunhos e
+     * "Últimas inscrições"). Essas listagens consultam a API de inscrições sem filtrar por
+     * oportunidade; nesse caso, as fases de contrarrazões são excluídas da consulta.
+     * Consultas que filtram por oportunidade ou por id continuam inalteradas.
+     */
+    protected function initPanelHooks()
+    {
+        $app = App::i();
+
+        $app->hook('ApiQuery(Registration).params', function (&$params) use ($app) {
+            if (isset($params['opportunity']) || isset($params['id'])) {
+                return;
+            }
+
+            $ids = $app->em->createQuery(
+                "SELECT IDENTITY(m.owner) AS id
+                   FROM MapasCulturais\\Entities\\OpportunityMeta m
+                  WHERE m.key = 'isCounterAppealPhase' AND m.value = '1'"
+            )->getSingleColumnResult();
+
+            if ($ids) {
+                $params['opportunity'] = '!IN(' . implode(',', array_map('intval', $ids)) . ')';
+            }
+        });
+    }
+
+    /* ---------------------------------------------------------------------
      * Inicialização
      * ------------------------------------------------------------------- */
 
@@ -129,6 +163,7 @@ class Plugin extends \MapasCulturais\Plugin
         $this->initJudgementLockHooks();
         $this->initTemplateHooks();
         $this->initMailHooks();
+        $this->initPanelHooks();
 
         // a fase de contrarrazões não tem página própria: leva o gestor para a Configuração de fases
         // da oportunidade e o candidato para a linha do tempo da sua inscrição, com a lista aberta
